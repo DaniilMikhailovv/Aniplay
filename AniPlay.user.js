@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Aniplay
 // @namespace    http://tampermonkey.net/
-// @version      1.22
+// @version      1.23
 // @description  Коллапсируемая панель с ползунком управления framerate и паузой на Animate-страницах; отображение текущего framerate внутри контейнера с эффектом hover и появлением фона в hover-зоне
 // @match        *://*/*
 // @include      file:///*
@@ -554,6 +554,15 @@
             console.log(`[Animate Panel] ORIGINAL_FPS: ${ORIGINAL_FPS}`);
         }
         
+        // Добавляем стили для обеспечения отображения над всеми элементами
+        const zIndexStyles = document.createElement('style');
+        zIndexStyles.textContent = `
+            .animate-panel * {
+                z-index: 2147483647 !important;
+            }
+        `;
+        document.head.appendChild(zIndexStyles);
+        
         // Подключаем Material Icons
         const link = document.createElement('link');
         link.href = 'https://fonts.googleapis.com/icon?family=Material+Icons';
@@ -569,6 +578,7 @@
 
         // Создаём панель
         const panel = document.createElement('div');
+        panel.classList.add('animate-panel');
         Object.assign(panel.style, {
             position: 'fixed',
             top: '16px',
@@ -576,7 +586,7 @@
             background: bgExpanded,
             borderRadius: '10px',
             padding: '7px',
-            zIndex: '9999',
+            zIndex: '2147483647', // Максимальное значение z-index
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -1180,7 +1190,7 @@
             borderRadius: '50%',
             color: '#fff',
             cursor: 'pointer',
-            zIndex: '10001',
+            zIndex: '2147483647',
             fontSize: '22px',
             transition: 'background 0.2s',
         });
@@ -1538,6 +1548,7 @@
 
         // === Контейнер для линеек и гайдов ===
         const rulersOverlay = document.createElement('div');
+        rulersOverlay.classList.add('animate-panel');
         Object.assign(rulersOverlay.style, {
             position: 'fixed',
             left: '0',
@@ -2340,7 +2351,7 @@
             fontFamily: 'Arial, sans-serif',
             fontSize: '12px',
             fontWeight: 'bold',
-            zIndex: '9998',
+            zIndex: '2147483646',
             userSelect: 'none',
             transition: 'opacity 0.3s',
             boxShadow: '0 -1px 3px rgba(0,0,0,0.2)',
