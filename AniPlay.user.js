@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Aniplay
 // @namespace    http://tampermonkey.net/
-// @version      1.23
+// @version      1.30
 // @description  Коллапсируемая панель с ползунком управления framerate и паузой на Animate-страницах; отображение текущего framerate внутри контейнера с эффектом hover и появлением фона в hover-зоне
 // @match        *://*/*
 // @include      file:///*
@@ -13,12 +13,6 @@
 
     // Ждём появления createjs.Ticker и сохраняем FPS при старте
     function waitForCreatejsTickerAndInitPanel(maxWaitMs = 10000, intervalMs = 100) {
-        // Проверяем наличие контейнера анимации
-        if (!document.querySelector('div#animation_container')) {
-            console.log('[Animate Panel] div#animation_container не найден, скрипт не будет запущен');
-            return;
-        }
-
         const start = Date.now();
         (function check() {
             if (
@@ -545,7 +539,7 @@
 
     function initAnimatePanel(ORIGINAL_FPS) {
         // Проверка Animate-страницы
-        const isAnimateCC = !!document.querySelector('meta[name="authoring-tool"][content*="Adobe_Animate_CC"]');
+        const isAnimateCC = !!document.getElementById('animation_container');
         if (!isAnimateCC) return;
         console.log('[Animate Panel] Adobe Animate страница обнаружена');
         if (typeof ORIGINAL_FPS === 'undefined') {
@@ -553,15 +547,6 @@
         } else {
             console.log(`[Animate Panel] ORIGINAL_FPS: ${ORIGINAL_FPS}`);
         }
-        
-        // Добавляем стили для обеспечения отображения над всеми элементами
-        const zIndexStyles = document.createElement('style');
-        zIndexStyles.textContent = `
-            .animate-panel * {
-                z-index: 2147483647 !important;
-            }
-        `;
-        document.head.appendChild(zIndexStyles);
         
         // Подключаем Material Icons
         const link = document.createElement('link');
@@ -578,7 +563,6 @@
 
         // Создаём панель
         const panel = document.createElement('div');
-        panel.classList.add('animate-panel');
         Object.assign(panel.style, {
             position: 'fixed',
             top: '16px',
@@ -586,7 +570,7 @@
             background: bgExpanded,
             borderRadius: '10px',
             padding: '7px',
-            zIndex: '2147483647', // Максимальное значение z-index
+            zIndex: '9999',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -1190,7 +1174,7 @@
             borderRadius: '50%',
             color: '#fff',
             cursor: 'pointer',
-            zIndex: '2147483647',
+            zIndex: '10001',
             fontSize: '22px',
             transition: 'background 0.2s',
         });
@@ -1548,7 +1532,6 @@
 
         // === Контейнер для линеек и гайдов ===
         const rulersOverlay = document.createElement('div');
-        rulersOverlay.classList.add('animate-panel');
         Object.assign(rulersOverlay.style, {
             position: 'fixed',
             left: '0',
@@ -2351,7 +2334,7 @@
             fontFamily: 'Arial, sans-serif',
             fontSize: '12px',
             fontWeight: 'bold',
-            zIndex: '2147483646',
+            zIndex: '9998',
             userSelect: 'none',
             transition: 'opacity 0.3s',
             boxShadow: '0 -1px 3px rgba(0,0,0,0.2)',
