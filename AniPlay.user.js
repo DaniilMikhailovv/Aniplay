@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Aniplay
 // @namespace    http://tampermonkey.net/
-// @version      1.11
+// @version      1.21
 // @description  Коллапсируемая панель с ползунком управления framerate и паузой на Animate-страницах; отображение текущего framerate внутри контейнера с эффектом hover и появлением фона в hover-зоне
 // @match        *://*/*
 // @include      file:///*
