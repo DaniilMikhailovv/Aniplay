@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Aniplay
 // @namespace    http://tampermonkey.net/
-// @version      1.21
+// @version      1.22
 // @description  Коллапсируемая панель с ползунком управления framerate и паузой на Animate-страницах; отображение текущего framerate внутри контейнера с эффектом hover и появлением фона в hover-зоне
 // @match        *://*/*
 // @include      file:///*
@@ -13,6 +13,12 @@
 
     // Ждём появления createjs.Ticker и сохраняем FPS при старте
     function waitForCreatejsTickerAndInitPanel(maxWaitMs = 10000, intervalMs = 100) {
+        // Проверяем наличие контейнера анимации
+        if (!document.querySelector('div#animation_container')) {
+            console.log('[Animate Panel] div#animation_container не найден, скрипт не будет запущен');
+            return;
+        }
+
         const start = Date.now();
         (function check() {
             if (
