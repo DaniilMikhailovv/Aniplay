@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AniPlay
 // @namespace    http://tampermonkey.net/
-// @version      1.35
+// @version      1.36
 // @description  Панель управления для Adobe Animate баннеров
 // @match        *://*/*
 // @include      file:///*
