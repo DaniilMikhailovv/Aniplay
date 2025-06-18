@@ -2130,7 +2130,7 @@
 
                 // === СОЗДАНИЕ ПРЯМОУГОЛЬНИКОВ ===
                 if (drawingRect && drawingStart && drawingRectData) {
-                    if (drawingRectData.width < 5 || drawingRectData.height < 5) {
+                    if (drawingRectData.width < 1 || drawingRectData.height < 1) {
                         if (drawingRect.parentNode) drawingRect.parentNode.removeChild(drawingRect);
                     } else {
                         drawnRects.push({ ...drawingRectData });
@@ -2339,7 +2339,7 @@
                     top: `${drawingRectData.top}px`,
                     width: `${drawingRectData.width}px`,
                     height: `${drawingRectData.height}px`,
-                    border: `1.5px solid #2196f3`,
+                    border: `1px solid #2196f3`,
                     background: drawingRectData.color,
                     zIndex: '2147483648',
                     pointerEvents: 'none',
@@ -2600,23 +2600,63 @@
 
         // === Функция для добавления маркеров изменения размера к прямоугольнику ===
         function addResizeHandles(r, idx) {
+            const rect = drawnRects[idx];
+            const minSize = Math.min(rect.width, rect.height);
+            
+            // Масштабируем размер ручек в зависимости от размера прямоугольника
+            // Для очень маленьких квадратов делаем ручки еще меньше
+            let handleSize;
+            if (minSize <= 4) {
+                handleSize = 2; // Минимальный размер для очень маленьких квадратов
+            } else if (minSize <= 8) {
+                handleSize = 3; // Средний размер для маленьких квадратов
+            } else {
+                handleSize = Math.max(4, Math.min(12, minSize / 8)); // Обычное масштабирование
+            }
+            
+            const handleOffset = handleSize / 2;
+            
             const handles = [
-                { pos: 'nw', style: { left: '-4px', top: '-4px', cursor: 'nwse-resize' } },
-                { pos: 'n', style: { left: 'calc(50% - 4px)', top: '-4px', cursor: 'ns-resize' } },
-                { pos: 'ne', style: { right: '-4px', top: '-4px', cursor: 'nesw-resize' } },
-                { pos: 'e', style: { right: '-4px', top: 'calc(50% - 4px)', cursor: 'ew-resize' } },
-                { pos: 'se', style: { right: '-4px', bottom: '-4px', cursor: 'nwse-resize' } },
-                { pos: 's', style: { left: 'calc(50% - 4px)', bottom: '-4px', cursor: 'ns-resize' } },
-                { pos: 'sw', style: { left: '-4px', bottom: '-4px', cursor: 'nesw-resize' } },
-                { pos: 'w', style: { left: '-4px', top: 'calc(50% - 4px)', cursor: 'ew-resize' } }
+                { pos: 'nw', style: { left: `-${handleOffset}px`, top: `-${handleOffset}px`, cursor: 'nwse-resize' } },
+                { pos: 'n', style: { left: `calc(50% - ${handleOffset}px)`, top: `-${handleOffset}px`, cursor: 'ns-resize' } },
+                { pos: 'ne', style: { right: `-${handleOffset}px`, top: `-${handleOffset}px`, cursor: 'nesw-resize' } },
+                { pos: 'e', style: { right: `-${handleOffset}px`, top: `calc(50% - ${handleOffset}px)`, cursor: 'ew-resize' } },
+                { pos: 'se', style: { right: `-${handleOffset}px`, bottom: `-${handleOffset}px`, cursor: 'nwse-resize' } },
+                { pos: 's', style: { left: `calc(50% - ${handleOffset}px)`, bottom: `-${handleOffset}px`, cursor: 'ns-resize' } },
+                { pos: 'sw', style: { left: `-${handleOffset}px`, bottom: `-${handleOffset}px`, cursor: 'nesw-resize' } },
+                { pos: 'w', style: { left: `-${handleOffset}px`, top: `calc(50% - ${handleOffset}px)`, cursor: 'ew-resize' } }
             ];
             
             handles.forEach(h => {
                 const handle = document.createElement('div');
+                
+                // Специальная обработка для очень маленьких квадратов
+                let handleStyle = { ...h.style };
+                if (minSize <= 4) {
+                    // Для очень маленьких квадратов размещаем ручки внутри границ
+                    if (h.pos === 'nw') {
+                        handleStyle = { left: '0px', top: '0px', cursor: 'nwse-resize' };
+                    } else if (h.pos === 'ne') {
+                        handleStyle = { right: '0px', top: '0px', cursor: 'nesw-resize' };
+                    } else if (h.pos === 'se') {
+                        handleStyle = { right: '0px', bottom: '0px', cursor: 'nwse-resize' };
+                    } else if (h.pos === 'sw') {
+                        handleStyle = { left: '0px', bottom: '0px', cursor: 'nesw-resize' };
+                    } else if (h.pos === 'n') {
+                        handleStyle = { left: 'calc(50% - 1px)', top: '0px', cursor: 'ns-resize' };
+                    } else if (h.pos === 's') {
+                        handleStyle = { left: 'calc(50% - 1px)', bottom: '0px', cursor: 'ns-resize' };
+                    } else if (h.pos === 'e') {
+                        handleStyle = { right: '0px', top: 'calc(50% - 1px)', cursor: 'ew-resize' };
+                    } else if (h.pos === 'w') {
+                        handleStyle = { left: '0px', top: 'calc(50% - 1px)', cursor: 'ew-resize' };
+                    }
+                }
+                
                 Object.assign(handle.style, {
                     position: 'absolute',
-                    width: '8px',
-                    height: '8px',
+                    width: `${handleSize}px`,
+                    height: `${handleSize}px`,
                     background: '#2196f3',
                     border: '1px solid #fff',
                     borderRadius: '0px',
@@ -2624,7 +2664,7 @@
                     pointerEvents: 'auto',
                     opacity: '0.8',
                     visibility: 'hidden',
-                    ...h.style
+                    ...handleStyle
                 });
                 
                 handle.addEventListener('mousedown', (e) => {
@@ -2806,7 +2846,7 @@
                     top: rect.top + 'px',
                     width: rect.width + 'px',
                     height: rect.height + 'px',
-                    border: '1.5px solid #2196f3',
+                    border: '1px solid #2196f3',
                     background: rect.color,
                     zIndex: '2147483648',
                     pointerEvents: 'auto',
@@ -2815,11 +2855,8 @@
                     outline: (resizingRectIdx === idx) ? '1px solid rgba(33, 150, 243, 0.5)' : (movingRectIdx === idx ? '1px solid rgba(255, 152, 0, 0.5)' : 'none'),
                     userSelect: 'none',
                     overflow: 'visible',
-                    cursor: 'grab',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    });
+                    cursor: 'grab'
+                });
                     
                     // Создаем текстовую метку с размерами
                     const sizeLabel = document.createElement('div');
@@ -2936,8 +2973,8 @@
                     newRect.width = resizeStart.width - dx;
                 }
                 // Минимальный размер
-                if (newRect.width < 10) newRect.width = 10;
-                if (newRect.height < 10) newRect.height = 10;
+                if (newRect.width < 1) newRect.width = 1;
+                if (newRect.height < 1) newRect.height = 1;
                 drawnRects[resizingRectIdx] = newRect;
                 renderGuides();
                 return;
