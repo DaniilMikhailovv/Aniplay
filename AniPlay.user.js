@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AniPlay
 // @namespace    http://tampermonkey.net/
-// @version      1.35
+// @version      1.37
 // @description  Панель управления для Adobe Animate баннеров
 // @match        *://*/*
 // @include      file:///*
@@ -46,7 +46,7 @@
 
         // Заводим переменную-переключатель
         window.bannerWidthOverride = null;
-
+        
         // Функция для сохранения настроек ширины
         function saveBannerWidthSettings(width, isActive) {
             try {
@@ -57,7 +57,7 @@
                 console.warn('[Banner Control] Ошибка при сохранении настроек ширины:', e);
             }
         }
-
+        
         // Восстанавливаем сохраненные настройки
         let savedWidth = null;
         try {
@@ -69,7 +69,7 @@
         } catch(e) {
             console.warn('[Banner Control] Ошибка при чтении сохраненной ширины:', e);
         }
-
+        
         // Восстанавливаем состояние активности
         let isWidthControlActive = false;
         try {
@@ -78,10 +78,10 @@
         } catch(e) {
             console.warn('[Banner Control] Ошибка при чтении состояния активности:', e);
         }
-
+        
         // Сохраняем исходную ширину баннера
         let originalWidth = null;
-
+        
         // Сохраняем оригинальный дескриптор clientWidth
         let originalDescriptor;
         try {
@@ -91,10 +91,10 @@
             originalDescriptor = null;
         }
         let isWidthOverridden = false;
-
+        
         // Для блокировки переходов по ссылкам в баннере
         window.isBannerEditModeActive = false;
-
+        
         // Функция для блокировки кликов по баннеру
         function blockBannerClicks() {
             if (!window.clickBlockerInstalled) {
@@ -107,16 +107,16 @@
                         console.log('[Banner Control] Клик по баннеру заблокирован');
                     }
                 };
-
+                
                 // Находим все ссылки внутри баннера
-                const bannerElement = document.getElementById('banner') ||
-                                     document.querySelector('.banner') ||
+                const bannerElement = document.getElementById('banner') || 
+                                     document.querySelector('.banner') || 
                                      document.getElementById('animation_container');
-
+                
                 if (bannerElement) {
                     // Добавляем обработчик на уровень баннера для перехвата всех кликов
                     bannerElement.addEventListener('click', window.bannerClickHandler, true);
-
+                    
                     // Для надежности - обработчик на уровне document
                     document.addEventListener('click', function(e) {
                         if (window.isBannerEditModeActive) {
@@ -133,7 +133,7 @@
                             }
                         }
                     }, true);
-
+                    
                     window.clickBlockerInstalled = true;
                     console.log('[Banner Control] Система блокировки кликов установлена');
                 } else {
@@ -144,11 +144,11 @@
 
         // Устанавливаем блокировщик кликов при инициализации
         blockBannerClicks();
-
+        
         // Функция для переопределения clientWidth
         function overrideClientWidth() {
             if (isWidthOverridden) return;
-
+            
             Object.defineProperty(document.documentElement, 'clientWidth', {
                 get: function() {
                     return window.bannerWidthOverride !== null
@@ -157,18 +157,18 @@
                 },
                 configurable: true
             });
-
+            
             isWidthOverridden = true;
             console.log('[Banner Control] clientWidth переопределен');
         }
-
+        
         // Функция для восстановления исходного clientWidth
         function restoreClientWidth() {
             if (!isWidthOverridden) return;
-
+            
             // Удаляем переопределенное свойство
             delete document.documentElement.clientWidth;
-
+            
             // Проверяем, был ли успешно сохранен оригинальный дескриптор
             if (originalDescriptor) {
                 // Применяем оригинальный дескриптор
@@ -177,7 +177,7 @@
             } else {
                 console.warn('[Banner Control] Невозможно восстановить оригинальный clientWidth');
             }
-
+            
             isWidthOverridden = false;
         }
 
@@ -196,7 +196,7 @@
             transition: 'background 0.2s, opacity 0.3s',
             opacity: '0'  // Начальное состояние - скрыт
         });
-
+        
         // Добавляем маркер-ручку для более удобного перетаскивания
         const dragHandle = document.createElement('div');
         Object.assign(dragHandle.style, {
@@ -253,7 +253,7 @@
             justifyContent: 'space-between',
             flexShrink: 0
         });
-
+        
         // Создаем три полоски внутри маркера
         for (let i = 0; i < 3; i++) {
             const line = document.createElement('div');
@@ -264,27 +264,27 @@
             });
             handleLines.appendChild(line);
         }
-
+        
         // Добавляем элементы в маркер
         dragHandle.appendChild(widthInfo);
         dragHandle.appendChild(handleLines);
-
+        
         // Инициализируем информацию о ширине
         updateWidthInfo();
-
+        
         // Добавляем эффект при наведении
         dragHandle.addEventListener('mouseenter', () => {
             if (isWidthControlActive) {
                 dragHandle.style.background = 'rgba(80, 80, 80, 0.9)';
             }
         });
-
+        
         dragHandle.addEventListener('mouseleave', () => {
             if (isWidthControlActive) {
                 dragHandle.style.background = 'rgba(80, 80, 80, 0.7)';
             }
         });
-
+        
         // Добавляем эффект при наведении
         resizeHandle.addEventListener('mouseenter', () => {
             if (isWidthControlActive) {
@@ -292,7 +292,7 @@
                 dragHandle.style.background = 'rgba(80, 80, 80, 0.9)';
             }
         });
-
+        
         resizeHandle.addEventListener('mouseleave', () => {
             if (isWidthControlActive) {
                 resizeHandle.style.background = 'rgba(0, 120, 255, 0.1)';
@@ -301,43 +301,43 @@
                 }
             }
         });
-
+        
         // Добавляем обработчик двойного клика для ручного ввода ширины
         function handleManualWidthInput() {
             if (!isWidthControlActive) return;
-
+            
             // Получаем текущую ширину баннера
             const currentWidth = animationContainer.offsetWidth;
-
+            
             // Показываем диалоговое окно для ввода новой ширины
             const newWidth = prompt(`Введите новую ширину баннера (текущая: ${currentWidth}px):`, currentWidth);
-
+            
             // Проверяем введенное значение
             if (newWidth !== null && !isNaN(newWidth) && parseInt(newWidth) > 0) {
                 // Устанавливаем минимальную ширину
                 const width = Math.max(200, parseInt(newWidth));
-
+                
                 // Изменяем ширину контейнера
                 animationContainer.style.width = `${width}px`;
-
+                
                 // Изменяем ширину canvas и dom_overlay_container
                 const canvas = document.getElementById('canvas');
                 const domOverlayContainer = document.getElementById('dom_overlay_container');
-
+                
                 if (canvas) canvas.style.width = `${width}px`;
                 if (domOverlayContainer) domOverlayContainer.style.width = `${width}px`;
-
+                
                 // Устанавливаем значение для переопределения clientWidth
                 window.bannerWidthOverride = width;
-
+                
                 // Вызываем событие resize для обновления баннера
                 window.dispatchEvent(new Event('resize'));
-
+                
                 // Сохраняем новую ширину в localStorage
                 saveBannerWidthSettings(width, isWidthControlActive);
             }
         }
-
+        
         // Добавляем обработчики двойного клика для обоих элементов
         resizeHandle.addEventListener('dblclick', handleManualWidthInput);
         dragHandle.addEventListener('dblclick', handleManualWidthInput);
@@ -360,26 +360,26 @@
 
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-
+            
             // Вычисляем новую ширину
             const newWidth = startWidth + (e.clientX - startX);
-
+            
             // Устанавливаем минимальную ширину
             const width = Math.max(200, newWidth);
-
+            
             // Изменяем ширину контейнера
             animationContainer.style.width = `${width}px`;
-
+            
             // Изменяем ширину canvas и dom_overlay_container
             const canvas = document.getElementById('canvas');
             const domOverlayContainer = document.getElementById('dom_overlay_container');
-
+            
             if (canvas) canvas.style.width = `${width}px`;
             if (domOverlayContainer) domOverlayContainer.style.width = `${width}px`;
-
+            
             // Устанавливаем значение для переопределения clientWidth
             window.bannerWidthOverride = width;
-
+            
             // Вызываем событие resize для обновления баннера
             window.dispatchEvent(new Event('resize'));
         });
@@ -388,7 +388,7 @@
             if (isDragging) {
                 // Сохраняем текущую ширину при завершении перетаскивания
                 saveBannerWidthSettings(window.bannerWidthOverride, isWidthControlActive);
-
+                
                 isDragging = false;
                 document.body.style.cursor = '';
             }
@@ -410,132 +410,132 @@
             widthControlBtn.title = 'Включить/выключить изменение ширины баннера';
             widthControlBtn.innerHTML = '<span class="material-icons" style="font-size:28px;">swap_horiz</span>';
             Object.assign(widthControlBtn.style, {
-                width: '44px',
+                width: '44px', 
                 height: '44px',
                 borderRadius: '8px',
-                border: 'none',
-                background: 'rgba(0,0,0,0.5)',
-                color: '#fff',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.13)',
+                border: 'none', 
+                background: 'rgba(0,0,0,0.5)', 
+                color: '#fff', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                padding: '0', 
+                boxShadow: '0 2px 8px rgba(0,0,0,0.13)', 
                 transition: 'background 0.18s, box-shadow 0.18s'
             });
-
-            widthControlBtn.addEventListener('mouseenter', () => {
-                widthControlBtn.style.background = 'rgba(255,255,255,0.2)';
+            
+            widthControlBtn.addEventListener('mouseenter', () => { 
+                widthControlBtn.style.background = 'rgba(255,255,255,0.2)'; 
             });
-
-            widthControlBtn.addEventListener('mouseleave', () => {
-                widthControlBtn.style.background = isWidthControlActive ? 'rgba(0,180,0,0.5)' : 'rgba(0,0,0,0.5)';
+            
+            widthControlBtn.addEventListener('mouseleave', () => { 
+                widthControlBtn.style.background = isWidthControlActive ? 'rgba(0,180,0,0.5)' : 'rgba(0,0,0,0.5)'; 
             });
-
-            widthControlBtn.addEventListener('mousedown', () => {
-                widthControlBtn.style.background = 'rgba(255,255,255,0.32)';
+            
+            widthControlBtn.addEventListener('mousedown', () => { 
+                widthControlBtn.style.background = 'rgba(255,255,255,0.32)'; 
             });
-
-            widthControlBtn.addEventListener('mouseup', () => {
-                widthControlBtn.style.background = 'rgba(255,255,255,0.2)';
+            
+            widthControlBtn.addEventListener('mouseup', () => { 
+                widthControlBtn.style.background = 'rgba(255,255,255,0.2)'; 
             });
-
+            
             // Обработчик клика для включения/выключения режима изменения ширины
             widthControlBtn.addEventListener('click', () => {
                 isWidthControlActive = !isWidthControlActive;
-
+                
                 // Обновляем глобальное состояние режима изменения ширины
                 window.isWidthControlActive = isWidthControlActive;
-
+                
                 // Обновляем глобальное состояние режима редактирования баннера
-                window.isBannerEditModeActive = isWidthControlActive ||
+                window.isBannerEditModeActive = isWidthControlActive || 
                     (window.isRulersActive === true);
-
+                
                 if (isWidthControlActive) {
                     // Активируем режим изменения ширины
-
+                    
                     // Сохраняем исходный размер при активации
                     if (originalWidth === null) {
                         originalWidth = animationContainer.offsetWidth;
                     }
-
+                    
                     // Если есть сохраненная ширина, применяем её
                     if (savedWidth !== null && savedWidth >= 200) {
                         animationContainer.style.width = `${savedWidth}px`;
-
+                        
                         const canvas = document.getElementById('canvas');
                         const domOverlayContainer = document.getElementById('dom_overlay_container');
-
+                        
                         if (canvas) canvas.style.width = `${savedWidth}px`;
                         if (domOverlayContainer) domOverlayContainer.style.width = `${savedWidth}px`;
-
+                        
                         // Устанавливаем значение для переопределения clientWidth
                         window.bannerWidthOverride = savedWidth;
-
+                        
                         // Вызываем событие resize для обновления баннера
                         window.dispatchEvent(new Event('resize'));
-
+                        
                         console.log(`[Banner Control] Применена сохраненная ширина: ${savedWidth}px`);
                     }
-
+                    
                     // Переопределяем clientWidth
                     overrideClientWidth();
                 } else {
                     // Выключаем режим изменения ширины
-
+                    
                     // Сбрасываем переопределение clientWidth
                     window.bannerWidthOverride = null;
-
+                    
                     // Восстанавливаем оригинальное поведение clientWidth
                     restoreClientWidth();
-
+                    
                     // Восстанавливаем исходные размеры элементов, если они были сохранены
                     if (originalWidth !== null) {
                         animationContainer.style.width = `${originalWidth}px`;
-
+                        
                         const canvas = document.getElementById('canvas');
                         const domOverlayContainer = document.getElementById('dom_overlay_container');
-
+                        
                         if (canvas) canvas.style.width = `${originalWidth}px`;
                         if (domOverlayContainer) domOverlayContainer.style.width = `${originalWidth}px`;
-
+                        
                         // Вызываем событие resize для обновления баннера
                         window.dispatchEvent(new Event('resize'));
                     }
                 }
-
+                
                 // Сохраняем состояние
                 saveBannerWidthSettings(
-                    isWidthControlActive ? window.bannerWidthOverride : null,
+                    isWidthControlActive ? window.bannerWidthOverride : null, 
                     isWidthControlActive
                 );
-
+                
                 // Меняем цвет кнопки в зависимости от состояния
                 widthControlBtn.style.background = isWidthControlActive ? 'rgba(0,180,0,0.5)' : 'rgba(0,0,0,0.5)';
-
+                
                 // Показываем/скрываем элементы контроля ширины
                 resizeHandle.style.opacity = isWidthControlActive ? '1' : '0';
                 dragHandle.style.opacity = isWidthControlActive ? '1' : '0';
-
+                
                 // Включаем/отключаем перетаскивание
                 resizeHandle.style.pointerEvents = isWidthControlActive ? 'auto' : 'none';
                 dragHandle.style.pointerEvents = isWidthControlActive ? 'auto' : 'none';
             });
-
+            
             // Добавляем кнопку в контейнер
             widthControlContainer.appendChild(widthControlBtn);
-
+            
             // Добавляем контейнер в scaleBox
             scaleBox.appendChild(widthControlContainer);
-
+            
             return widthControlBtn;
         }
 
         // Добавляем ползунок и маркер к контейнеру
         animationContainer.appendChild(resizeHandle);
         animationContainer.appendChild(dragHandle);
-
+        
         // Если режим изменения ширины был активен до перезагрузки,
         // активируем его автоматически
         if (isWidthControlActive) {
@@ -544,42 +544,42 @@
             dragHandle.style.opacity = '1';
             resizeHandle.style.pointerEvents = 'auto';
             dragHandle.style.pointerEvents = 'auto';
-
+            
             // Обновляем глобальное состояние
             window.isWidthControlActive = true;
             window.isBannerEditModeActive = true || (window.isRulersActive === true);
-
+            
             // Сохраняем исходный размер
             if (originalWidth === null) {
                 originalWidth = animationContainer.offsetWidth;
             }
-
+            
             // Если есть сохраненная ширина, применяем её
             if (savedWidth !== null && savedWidth >= 200) {
                 animationContainer.style.width = `${savedWidth}px`;
-
+                
                 const canvas = document.getElementById('canvas');
                 const domOverlayContainer = document.getElementById('dom_overlay_container');
-
+                
                 if (canvas) canvas.style.width = `${savedWidth}px`;
                 if (domOverlayContainer) domOverlayContainer.style.width = `${savedWidth}px`;
-
+                
                 // Устанавливаем значение для переопределения clientWidth
                 window.bannerWidthOverride = savedWidth;
-
+                
                 // Переопределяем clientWidth
                 overrideClientWidth();
-
+                
                 // Вызываем событие resize для обновления баннера
                 window.dispatchEvent(new Event('resize'));
-
+                
                 console.log(`[Banner Control] Автоматически активирован режим изменения ширины с шириной: ${savedWidth}px`);
             }
         }
-
+        
         // Сохраняем функцию для последующего использования
         window.createWidthControlButton = createWidthControlButton;
-
+        
         console.log('[Banner Control] Управление шириной баннера инициализировано');
     }
 
@@ -588,13 +588,13 @@
         let checkAttempts = 0;
         const maxAttempts = 4;
         const checkDelay = 500; // 500ms между попытками
-
+        
         function checkAnimationContainer() {
             checkAttempts++;
             const animationContainer = document.getElementById('animation_container');
-
+            
             console.log(`[Animate Panel] Попытка ${checkAttempts}/${maxAttempts}: поиск animation_container...`);
-
+            
             if (animationContainer) {
         console.log('[Animate Panel] Adobe Animate страница обнаружена');
         if (typeof ORIGINAL_FPS === 'undefined') {
@@ -602,12 +602,12 @@
         } else {
             console.log(`[Animate Panel] ORIGINAL_FPS: ${ORIGINAL_FPS}`);
         }
-
+        
                 // Контейнер найден, продолжаем инициализацию
                 initializePanelComponents();
                 return;
             }
-
+            
             if (checkAttempts < maxAttempts) {
                 console.log(`[Animate Panel] animation_container не найден, повтор через ${checkDelay}ms...`);
                 setTimeout(checkAnimationContainer, checkDelay);
@@ -616,19 +616,19 @@
                 return;
             }
         }
-
+        
         function initializePanelComponents() {
         // Подключаем Material Icons
         const link = document.createElement('link');
         link.href = 'https://fonts.googleapis.com/icon?family=Material+Icons';
         link.rel = 'stylesheet';
         document.head.appendChild(link);
-
+        
         // Инициализируем управление шириной баннера
         initBannerWidthControl();
 
         // Настройки фона
-        const bgExpanded = 'rgba(0, 0, 0, 0.7)';
+        const bgExpanded = 'rgba(0, 0, 0, 0.7)'; 
         const bgCollapsed = 'transparent';
 
         // Создаём панель
@@ -822,12 +822,12 @@
         });
             frameDragBox.title = 'Потяните влево/вправо для выбора кадра, двойной клик — редактировать кадр';
         frameSliderContainer.appendChild(frameDragBox);
-
+            
             // Переменные для режима редактирования
             let isFrameEditing = false;
             let originalFrameValue = '';
             let frameInput = null; // Временный input элемент
-
+            
         // Логика drag для кадров
         let frameDragActive = false;
         let frameDragStartX = 0;
@@ -847,42 +847,42 @@
             frameDragBox.textContent = val;
         }
             }
-
+            
             // Функция для входа в режим редактирования
             function enterFrameEditMode() {
                 if (isFrameEditing) return;
-
+                
                 // Ставим анимацию на паузу при входе в режим редактирования
                 if (typeof window.exportRoot !== 'undefined') {
                     window.exportRoot.paused = true;
                     updatePauseButton();
                 }
-
+                
                 isFrameEditing = true;
                 originalFrameValue = frameDragBox.textContent;
-
+                
                 // Получаем точные размеры и позицию оригинального элемента
                 const rect = frameDragBox.getBoundingClientRect();
                 const computedStyle = window.getComputedStyle(frameDragBox);
-
+                
                 // ВАЖНО: Учитываем масштабирование панели!
                 // Получаем текущий масштаб панели
                 const currentScale = (1 / window.devicePixelRatio) * panelScale;
-
+                
                 // Вычисляем реальные размеры без учета масштабирования
                 const realWidth = rect.width / currentScale;
                 const realHeight = rect.height / currentScale;
-
+                
                 // Вычисляем позицию относительно панели без учета масштабирования
                 const panelRect = panel.getBoundingClientRect();
                 const relativeLeft = (rect.left - panelRect.left) / currentScale;
                 const relativeTop = (rect.top - panelRect.top) / currentScale;
-
+                
                 // Создаем ПРОСТОЙ contentEditable div БЕЗ учета масштабирования
                 frameInput = document.createElement('div');
                 frameInput.contentEditable = true;
                 frameInput.textContent = frameDragBox.textContent;
-
+                
                 // Применяем стили с реальными размерами (панель сама масштабирует)
                 frameInput.style.cssText = `
                     position: absolute !important;
@@ -922,17 +922,17 @@
                     word-wrap: normal !important;
                     word-break: normal !important;
                 `;
-
+                
                 frameInput.title = 'Введите номер кадра и нажмите Enter';
-
+                
                 // Скрываем оригинальный элемент и добавляем contentEditable div В ПАНЕЛЬ
                 frameDragBox.style.visibility = 'hidden';
                 // Добавляем напрямую в панель, а не в родителя frameDragBox
                 panel.appendChild(frameInput);
-
+                
                 // Фокусируемся и выделяем текст
                 frameInput.focus();
-
+                
                 // Выделяем весь текст в contentEditable
                 if (window.getSelection && document.createRange) {
                     const range = document.createRange();
@@ -941,19 +941,19 @@
                     sel.removeAllRanges();
                     sel.addRange(range);
                 }
-
+                
                 // Обработчики для contentEditable div
                 frameInput.addEventListener('keydown', handleFrameInputKeydown);
                 frameInput.addEventListener('blur', handleFrameInputBlur);
                 frameInput.addEventListener('input', handleFrameInputInput);
             }
-
+            
             // Функция для выхода из режима редактирования
             function exitFrameEditMode(save = false) {
                 if (!isFrameEditing || !frameInput) return;
-
+                
                 isFrameEditing = false;
-
+                
                 if (save) {
                     const newValue = parseInt(frameInput.textContent.trim(), 10);
                     if (!isNaN(newValue) && newValue >= 1 && newValue <= frameDragMax) {
@@ -966,7 +966,7 @@
                     // Отменяем изменения
                     frameDragBox.textContent = originalFrameValue;
                 }
-
+                
                 // Удаляем contentEditable div из панели и показываем оригинальный элемент
                 if (frameInput && frameInput.parentNode) {
                     frameInput.parentNode.removeChild(frameInput);
@@ -974,7 +974,7 @@
                 frameInput = null;
                 frameDragBox.style.visibility = 'visible';
             }
-
+            
             // Обработчики событий для input
             function handleFrameInputKeydown(e) {
                 if (e.key === 'Enter') {
@@ -988,7 +988,7 @@
                     exitFrameEditMode(true); // Сохраняем при Tab
                 }
             }
-
+            
             function handleFrameInputBlur() {
                 // Небольшая задержка, чтобы обработались другие события
                 setTimeout(() => {
@@ -997,13 +997,13 @@
                     }
                 }, 100);
             }
-
+            
             function handleFrameInputInput(e) {
                 // Ограничиваем ввод только цифрами для contentEditable
                 const value = e.target.textContent.replace(/[^0-9]/g, '');
                 if (e.target.textContent !== value) {
                     e.target.textContent = value;
-
+                    
                     // Перемещаем курсор в конец после изменения
                     if (window.getSelection && document.createRange) {
                         const range = document.createRange();
@@ -1015,10 +1015,10 @@
                     }
                 }
             }
-
+            
         frameDragBox.addEventListener('mousedown', (e) => {
                 if (isFrameEditing) return; // Игнорируем drag в режиме редактирования
-
+                
             frameDragActive = true;
             frameDragStartX = e.clientX;
             frameDragStartVal = parseInt(frameDragBox.textContent, 10) || 1;
@@ -1038,18 +1038,18 @@
                 document.body.style.cursor = '';
             }
         });
-
+            
             // Двойной клик — режим редактирования
             frameDragBox.addEventListener('dblclick', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 enterFrameEditMode();
             });
-
+            
             // Обработка клавиш в режиме редактирования
             frameDragBox.addEventListener('keydown', (e) => {
                 if (!isFrameEditing) return;
-
+                
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     exitFrameEditMode(true); // Сохраняем изменения
@@ -1061,7 +1061,7 @@
                     exitFrameEditMode(true); // Сохраняем при Tab
                 }
             });
-
+            
             // Выход из режима редактирования при потере фокуса
             frameDragBox.addEventListener('blur', () => {
                 if (isFrameEditing) {
@@ -1073,16 +1073,16 @@
                     }, 100);
                 }
             });
-
+            
             // Ограничиваем ввод только цифрами
             frameDragBox.addEventListener('input', (e) => {
                 if (!isFrameEditing) return;
-
+                
                 // Удаляем все нецифровые символы
                 const value = frameDragBox.textContent.replace(/[^0-9]/g, '');
                 if (frameDragBox.textContent !== value) {
                     frameDragBox.textContent = value;
-
+                    
                     // Перемещаем курсор в конец
                     if (window.getSelection && document.createRange) {
                         const range = document.createRange();
@@ -1157,24 +1157,24 @@
         const frameSliderStyleElement = document.createElement('style');
         frameSliderStyleElement.textContent = frameSliderStyles;
         document.head.appendChild(frameSliderStyleElement);
-
+        
         // Обновление слайдера в реальном времени
         let isRafActive = true;
         let lastFrame = -1; // Для отслеживания изменений кадра
         let frameHistory = []; // История последних кадров
-
+        
         function rafUpdateSlider() {
             if (isRafActive) {
                 if (typeof window.exportRoot !== 'undefined') {
                     let currentFrame = 0;
-
+                    
                     // Получаем текущий кадр
                     if (typeof window.exportRoot.currentFrame === 'number') {
                         currentFrame = window.exportRoot.currentFrame;
                     } else if (window.exportRoot.timeline && typeof window.exportRoot.timeline.position === 'number') {
                         currentFrame = window.exportRoot.timeline.position;
                     }
-
+                    
                     // Проверяем, изменился ли кадр
                     if (currentFrame !== lastFrame) {
                         // Обновляем слайдер только если не перетаскиваем его
@@ -1182,17 +1182,17 @@
                             frameSlider.value = currentFrame.toString();
                             frameDragBox.textContent = (currentFrame + 1).toString();
                         }
-
+                        
                         // Сохраняем историю кадров для отладки
                         frameHistory.push(currentFrame);
                         if (frameHistory.length > 10) {
                             frameHistory.shift();
                         }
-
+                        
                         lastFrame = currentFrame;
                     }
                 }
-
+                
                 requestAnimationFrame(rafUpdateSlider);
             }
         }
@@ -1203,30 +1203,30 @@
             if (typeof window.exportRoot !== 'undefined') {
                 let totalFrames = 0;
                 let currentFrame = 0;
-
+                
                 // Получаем общее количество кадров
                 if (typeof window.exportRoot.totalFrames === 'number') {
                     totalFrames = window.exportRoot.totalFrames;
                 } else if (window.exportRoot.timeline && typeof window.exportRoot.timeline.duration === 'number') {
                     totalFrames = window.exportRoot.timeline.duration;
                 }
-
+                
                 // Получаем текущий кадр
                 if (typeof window.exportRoot.currentFrame === 'number') {
                     currentFrame = window.exportRoot.currentFrame;
                 } else if (window.exportRoot.timeline && typeof window.exportRoot.timeline.position === 'number') {
                     currentFrame = window.exportRoot.timeline.position;
                 }
-
+                
                 if (totalFrames > 0) {
                     frameSlider.max = (totalFrames - 1).toString();
-
+                    
                     // Обновляем положение слайдера только если не перетаскиваем его
                     if (!frameDragActive) {
                         frameSlider.value = currentFrame.toString();
                         frameDragBox.textContent = (currentFrame + 1).toString();
                     }
-
+                    
                     frameSlider.disabled = false;
                 } else {
                     frameSlider.disabled = true;
@@ -1312,7 +1312,7 @@
         addMarkerBtn.addEventListener('mouseenter', () => { addMarkerBtn.style.background = '#555'; });
         addMarkerBtn.addEventListener('mouseleave', () => { addMarkerBtn.style.background = '#3a3a3a'; });
             markerButtonsContainer.appendChild(addMarkerBtn);
-
+            
             // Кнопка очистки всех маркеров
             const clearMarkersBtn = document.createElement('button');
             clearMarkersBtn.textContent = '✕';
@@ -1346,7 +1346,7 @@
             markerButtonsContainer.appendChild(clearMarkersBtn);
 
         let frameMarkers = [];
-
+            
             // === Функции для сохранения и загрузки маркеров ===
             function saveFrameMarkers() {
                 try {
@@ -1356,14 +1356,14 @@
                     console.warn('[Frame Markers] Ошибка при сохранении маркеров:', e);
                 }
             }
-
+            
             function loadFrameMarkers() {
                 try {
                     const saved = localStorage.getItem('animateFrameMarkers');
                     if (saved) {
                         const parsedMarkers = JSON.parse(saved);
                         if (Array.isArray(parsedMarkers)) {
-                            frameMarkers = parsedMarkers.filter(marker =>
+                            frameMarkers = parsedMarkers.filter(marker => 
                                 typeof marker === 'number' && marker >= 0
                             );
                             if (frameMarkers.length > 0) {
@@ -1381,22 +1381,22 @@
                     frameMarkers = [];
                 }
             }
-
+            
             // Загружаем сохраненные маркеры при инициализации
             loadFrameMarkers();
-
+            
             // Устанавливаем правильную видимость при инициализации
             setTimeout(() => {
                 updateMarkersVisibility();
             }, 100);
-
+            
             // Функция для управления видимостью контейнеров маркеров
             function updateMarkersVisibility() {
                 const hasMarkers = frameMarkers.length > 0;
-
+                
                 // Показываем/скрываем контейнер с маркерами
                 markerRow.style.display = hasMarkers ? 'flex' : 'none';
-
+                
                 // Кнопки управления показываем всегда, но меняем margin
                 if (hasMarkers) {
                     // Если есть маркеры - обычный отступ
@@ -1405,10 +1405,10 @@
                     // Если маркеров нет - убираем верхний отступ чтобы не было пустого места
                     markerButtonsContainer.style.margin = '4px 0 4px 0';
                 }
-
+                
                 console.log(`[Frame Markers] Обновлена видимость: hasMarkers=${hasMarkers}`);
             }
-
+            
         function renderMarkers() {
             markerRow.innerHTML = '';
             frameMarkers.sort((a, b) => a - b);
@@ -1483,7 +1483,7 @@
                 btn.appendChild(removeBtn);
                 markerRow.appendChild(btn);
             });
-
+                
                 // Обновляем видимость после рендеринга
                 updateMarkersVisibility();
         }
@@ -1525,11 +1525,11 @@
             transition: 'background 0.2s',
             fontSize: '22px'
         });
-
+        
         // hover
         pauseBtn.addEventListener('mouseenter', () => { pauseBtn.style.background = 'rgba(255,255,255,0.2)'; });
         pauseBtn.addEventListener('mouseleave', () => { pauseBtn.style.background = 'rgba(0,0,0,0.5)'; });
-
+        
         // Обновление иконки и заголовка в зависимости от состояния
         function updatePauseButton() {
             if (typeof window.exportRoot !== 'undefined') {
@@ -1542,7 +1542,7 @@
                 }
             }
         }
-
+        
         // Обработчик клика
         pauseBtn.addEventListener('click', () => {
             if (typeof window.exportRoot !== 'undefined') {
@@ -1551,9 +1551,9 @@
                 console.log(`[Paused toggle] ${window.exportRoot.paused}`);
             }
         });
-
+        
         btnContainer.appendChild(pauseBtn);
-
+        
         // Функция создания кнопки с иконкой и hover-эффектом - оставляем для возможного использования в будущем
         function addIconButton(iconName, title, onClick) {
             const btn = document.createElement('button');
@@ -1636,10 +1636,10 @@
                 panel.style.minWidth = '52px';
                 panel.style.minHeight = '52px';
                 collapseIcon.textContent = 'chevron_right';
-
+                
                 // Сделаем панель почти невидимой в свернутом состоянии
                 panel.style.opacity = '0.00';
-
+                
                 // Удаляем класс развернутой панели и добавляем класс свернутой
                 panel.classList.remove('panel-expanded');
                 panel.classList.add('panel-collapsed');
@@ -1650,17 +1650,17 @@
                 panel.style.minWidth = '52px';
                 panel.style.minHeight = '52px';
                 collapseIcon.textContent = 'chevron_left';
-
+                
                 // Сделаем панель полностью видимой в развернутом состоянии
                 panel.style.opacity = '1';
-
+                
                 // Удаляем класс свернутой панели и добавляем класс развернутой
                 panel.classList.remove('panel-collapsed');
                 panel.classList.add('panel-expanded');
             }
         }
         setPanelCollapsed(isCollapsed);
-
+        
         // Добавляем события для отображения свернутой панели при наведении
         panel.addEventListener('mouseenter', () => {
             // Показываем панель при наведении только если она свернута
@@ -1668,17 +1668,17 @@
                 panel.style.opacity = '1';
             }
         });
-
+        
         panel.addEventListener('mouseleave', () => {
             // Скрываем панель при уходе курсора только если она свернута
             if (isCollapsed) {
                 panel.style.opacity = '0.00';
             }
         });
-
+        
         // Делаем плавный переход для opacity
         panel.style.transition = 'opacity 0.3s, width 0.2s, height 0.2s, background 0.2s';
-
+        
         // === devicePixelRatio compensation ===
         function getZoomCompensated(val) {
             return Math.round(val);
@@ -1754,11 +1754,11 @@
 
         window.addEventListener('mousemove', (e) => {
             if (!isResizing) return;
-
+            
             const dx = e.clientX - resizeStartX;
             const scaleDelta = dx * 0.005; // Коэффициент чувствительности
             const newScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, resizeStartScale + scaleDelta));
-
+            
             if (newScale !== panelScale) {
                 panelScale = newScale;
                 applyPanelScaleAndZoom();
@@ -1779,29 +1779,29 @@
             panel.style.transformOrigin = 'top left';
         }
         applyPanelScaleAndZoom();
-
+        
         function setPanelPosition(left, top) {
             // Получаем размеры окна браузера
             const windowWidth = window.innerWidth;
             const windowHeight = window.innerHeight;
-
+            
             // Получаем размеры панели
             const panelRect = panel.getBoundingClientRect();
             const panelWidth = panelRect.width / (1 / window.devicePixelRatio * panelScale);
             const panelHeight = panelRect.height / (1 / window.devicePixelRatio * panelScale);
-
+            
             // Ограничиваем позицию панели границами окна браузера
             // Добавляем небольшой запас, чтобы панель не прилипала вплотную к краю
             const buffer = 5;
-
+            
             // Ограничиваем левую и правую границы
             left = Math.max(buffer, Math.min(left, windowWidth - panelWidth - buffer));
-
+            
             // Ограничиваем верхнюю и нижнюю границы
             // Учитываем наличие информационной панели внизу (24px)
             const bottomBarHeight = 24;
             top = Math.max(buffer, Math.min(top, windowHeight - panelHeight - bottomBarHeight - buffer));
-
+            
             // Устанавливаем позицию
             panel.style.left = left + 'px';
             panel.style.top = top + 'px';
@@ -1814,7 +1814,7 @@
         window.addEventListener('resize', () => {
             applyPanelScaleAndZoom();
             const rect = panel.getBoundingClientRect();
-
+            
             // После изменения размера окна проверяем, не выходит ли панель за его пределы
             setPanelPosition(rect.left, rect.top);
         });
@@ -1827,7 +1827,7 @@
             const direction = e.deltaY < 0 ? 1 : -1;
             const oldScale = panelScale;
             panelScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, panelScale + direction * SCALE_STEP));
-
+            
             if (oldScale !== panelScale) {
                 const rect = panel.getBoundingClientRect();
                 applyPanelScaleAndZoom();
@@ -1891,54 +1891,54 @@
         Object.assign(rulersBtn.style, {
             width: '44px', height: '44px',
             borderRadius: '8px',
-            border: 'none',
-            background: 'rgba(0,0,0,0.5)',
-            color: '#fff',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.13)',
-            transition: 'background 0.18s, box-shadow 0.18s',
-            margin: '0 0 0 0',
+            border: 'none', 
+            background: 'rgba(0,0,0,0.5)', 
+            color: '#fff', 
+            cursor: 'pointer', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            padding: '0', 
+            boxShadow: '0 2px 8px rgba(0,0,0,0.13)', 
+            transition: 'background 0.18s, box-shadow 0.18s', 
+            margin: '0 0 0 0', 
             alignSelf: 'center',
         });
-
+        
         // Состояние активности линеек
         window.isRulersActive = false;
-
+        
         // Обновление цвета кнопки в зависимости от состояния
         function updateRulersBtnColor() {
             // Используем тот же зеленый цвет, что и для кнопки изменения ширины
             rulersBtn.style.background = window.isRulersActive ? 'rgba(0,180,0,0.5)' : 'rgba(0,0,0,0.5)';
         }
-
-        rulersBtn.addEventListener('mouseenter', () => {
-            rulersBtn.style.background = 'rgba(255,255,255,0.2)';
+        
+        rulersBtn.addEventListener('mouseenter', () => { 
+            rulersBtn.style.background = 'rgba(255,255,255,0.2)'; 
         });
-
-        rulersBtn.addEventListener('mouseleave', () => {
+        
+        rulersBtn.addEventListener('mouseleave', () => { 
             // При уходе мыши восстанавливаем цвет в зависимости от состояния
             updateRulersBtnColor();
         });
-
-        rulersBtn.addEventListener('mousedown', () => {
-            rulersBtn.style.background = 'rgba(255,255,255,0.32)';
+        
+        rulersBtn.addEventListener('mousedown', () => { 
+            rulersBtn.style.background = 'rgba(255,255,255,0.32)'; 
         });
-
-        rulersBtn.addEventListener('mouseup', () => {
-            rulersBtn.style.background = 'rgba(255,255,255,0.2)';
+        
+        rulersBtn.addEventListener('mouseup', () => { 
+            rulersBtn.style.background = 'rgba(255,255,255,0.2)'; 
         });
-
+        
         // Вставляем кнопку rulersBtn в scaleBox
         scaleBox.appendChild(rulersBtn);
-
+        
         // Добавляем кнопку управления шириной баннера
         if (window.createWidthControlButton) {
             window.createWidthControlButton(scaleBox);
         }
-
+        
         btnContainer.appendChild(scaleBox);
 
         // Показывать кнопки только если панель развернута
@@ -2014,7 +2014,7 @@
         // Добавляем обработчики для изменения видимости линеек при наведении
         let isRulerHHovered = false;
         let isRulerVHovered = false;
-
+        
         rulerH.addEventListener('mouseenter', () => {
             isRulerHHovered = true;
             rulerH.style.background = 'rgba(30,30,30,0.3)';
@@ -2025,7 +2025,7 @@
             rulerH.style.background = 'rgba(30,30,30,0.01)';
             drawRulers();
         });
-
+        
         rulerV.addEventListener('mouseenter', () => {
             isRulerVHovered = true;
             rulerV.style.background = 'rgba(30,30,30,0.3)';
@@ -2122,7 +2122,7 @@
             tempGuide = null;
             isDraggingNewGuide = false;
             document.body.style.cursor = '';
-
+            
             saveGuides();
             renderGuides();
                     return; // Выходим, чтобы не выполнять другие обработчики
@@ -2201,7 +2201,7 @@
         });
         guidesContainer.style.display = 'none';
         document.body.appendChild(guidesContainer);
-
+            
             // Создаем специальный слой для перехвата событий рисования
             const drawingLayer = document.createElement('div');
             Object.assign(drawingLayer.style, {
@@ -2216,7 +2216,7 @@
             });
             drawingLayer.style.display = 'none';
             document.body.appendChild(drawingLayer);
-
+            
         // Сохранение
         function saveGuides() {
             localStorage.setItem('animatePanelGuides', JSON.stringify({ h: hGuides, v: vGuides }));
@@ -2225,7 +2225,7 @@
                 // === Рисование прямоугольников мышкой ===
                 // Фиксированный цвет для прямоугольников
                 const RECTANGLE_COLOR = 'rgba(0, 120, 255, 0.25)';
-
+                
                 // Функция для проверки, близко ли клик к существующим гайдам
                 function isNearGuide(x, y, threshold = 5) {
                     // Проверяем близость к вертикальным гайдам
@@ -2234,17 +2234,17 @@
                             return true;
                         }
                     }
-
-                    // Проверяем близость к горизонтальным гайдам
+                    
+                    // Проверяем близость к горизонтальным гайдам  
                     for (let guideY of hGuides) {
                         if (Math.abs(y - guideY) <= threshold) {
                             return true;
                         }
                     }
-
+                    
                     return false;
                 }
-
+                
                 // Функция для проверки, находится ли клик рядом с углом прямоугольника
                 function isNearRectangleEdge(x, y, threshold = 4) {
                     for (let rect of drawnRects) {
@@ -2253,53 +2253,53 @@
                         const right = rect.left + rect.width;
                         const top = rect.top;
                         const bottom = rect.top + rect.height;
-
+                        
                         // Проверяем близость к вертикальным краям
                         if ((Math.abs(x - left) <= threshold || Math.abs(x - right) <= threshold) &&
                             y >= top - threshold && y <= bottom + threshold) {
                             return true;
                         }
-
-                        // Проверяем близость к горизонтальным краям
+                        
+                        // Проверяем близость к горизонтальным краям  
                         if ((Math.abs(y - top) <= threshold || Math.abs(y - bottom) <= threshold) &&
                             x >= left - threshold && x <= right + threshold) {
                             return true;
                         }
                     }
-
+                    
                     return false;
                 }
-
+                
                 // Функция для проверки, находится ли клик в области линеек
                 function isInRulerArea(x, y) {
                     return x <= 24 || y <= 24;
                 }
-
+                
                 // Функция для проверки, находится ли клик в области панели управления
                 function isInPanelArea(x, y) {
                     const panelRect = panel.getBoundingClientRect();
-                    return x >= panelRect.left && x <= panelRect.right &&
+                    return x >= panelRect.left && x <= panelRect.right && 
                            y >= panelRect.top && y <= panelRect.bottom;
                 }
-
+                
                 // Функция для проверки, находится ли клик в области статус-бара
                 function isInStatusBarArea(x, y) {
                     const statusBarRect = statusBar.getBoundingClientRect();
-                    return x >= statusBarRect.left && x <= statusBarRect.right &&
+                    return x >= statusBarRect.left && x <= statusBarRect.right && 
                            y >= statusBarRect.top && y <= statusBarRect.bottom;
                 }
-
+                
                 // Улучшенная логика обработки кликов в области линеек и гайдов
                 drawingLayer.addEventListener('mousedown', (e) => {
                 if (rulersOverlay.style.display === 'none') return;
                 if (e.button !== 0) return;
-
+                    
                     const clickX = e.clientX;
                     const clickY = e.clientY;
-
+                    
                     // Если клик в области линеек, не рисуем прямоугольник
                     if (isInRulerArea(clickX, clickY)) return;
-
+                    
                     // Если клик в области панели управления, передаем событие панели
                     if (isInPanelArea(clickX, clickY)) {
                         // Временно отключаем pointer-events у drawingLayer
@@ -2322,13 +2322,13 @@
                         }
                         return;
                     }
-
+                    
                     // Если клик рядом с существующим гайдом, не рисуем прямоугольник
                     if (isNearGuide(clickX, clickY)) return;
-
+                    
                     // Если клик рядом с углом прямоугольника, не рисуем прямоугольник
                     if (isNearRectangleEdge(clickX, clickY)) return;
-
+                    
                     // Если добрались до сюда - можно рисовать прямоугольник
                     drawingStart = { x: clickX, y: clickY };
                     drawingRectData = { left: drawingStart.x, top: drawingStart.y, width: 1, height: 1, color: RECTANGLE_COLOR };
@@ -2348,21 +2348,21 @@
                     cursor: 'crosshair',
                     overflow: 'visible'
                 });
-
+                
                 // Создаем текстовую метку с размерами для временного прямоугольника
                 const drawingSizeLabel = document.createElement('div');
                 drawingSizeLabel.textContent = `${Math.round(drawingRectData.width)}×${Math.round(drawingRectData.height)}`;
-
+                
                 // Функция для обновления размера и позиции метки
                 function updateDrawingSizeLabel() {
                     const width = drawingRectData.width;
                     const height = drawingRectData.height;
                     const minSize = Math.min(width, height);
-
+                    
                     // Масштабируем размер шрифта в зависимости от размера прямоугольника
                     const fontSize = Math.max(8, Math.min(16, minSize / 8));
                     const padding = Math.max(1, Math.min(4, minSize / 20));
-
+                    
                     Object.assign(drawingSizeLabel.style, {
                         position: 'absolute',
                         left: '0',
@@ -2384,13 +2384,13 @@
                         transform: 'translateY(2px)'
                     });
                 }
-
+                
                 updateDrawingSizeLabel();
                 drawingRect.appendChild(drawingSizeLabel);
                 guidesContainer.appendChild(drawingRect);
                 e.preventDefault();
             });
-
+            
             window.addEventListener('mousemove', (e) => {
                 if (!drawingRect || !drawingStart || !drawingRectData) return;
                 const x1 = drawingStart.x;
@@ -2411,29 +2411,29 @@
                 drawingRectData.top = top;
                 drawingRectData.width = width;
                 drawingRectData.height = height;
-
+                    
                     // Обновляем текст размеров в реальном времени
                     const sizeLabel = drawingRect.querySelector('div');
                     if (sizeLabel) {
                         sizeLabel.textContent = `${Math.round(width)}×${Math.round(height)}`;
-
+                        
                         // Обновляем размер и позицию метки
                         const minSize = Math.min(width, height);
                         const fontSize = Math.max(8, Math.min(16, minSize / 8));
                         const padding = Math.max(1, Math.min(4, minSize / 20));
-
+                        
                         sizeLabel.style.fontSize = `${fontSize}px`;
                         sizeLabel.style.padding = `${padding}px ${padding * 2}px`;
                     }
                 });
-
+                
                 // Добавляем проксирование событий click для UI элементов
                 drawingLayer.addEventListener('click', (e) => {
                     if (rulersOverlay.style.display === 'none') return;
-
+                    
                     const clickX = e.clientX;
                     const clickY = e.clientY;
-
+                    
                     // Если клик в области панели управления, проксируем событие
                     if (isInPanelArea(clickX, clickY)) {
                         // Временно отключаем pointer-events у drawingLayer
@@ -2459,14 +2459,14 @@
                         return;
                     }
                 });
-
+                
                 // Добавляем проксирование событий mouseup для UI элементов
                 drawingLayer.addEventListener('mouseup', (e) => {
                     if (rulersOverlay.style.display === 'none') return;
-
+                    
                     const clickX = e.clientX;
                     const clickY = e.clientY;
-
+                    
                     // Если mouseup в области панели управления или статус-бара, проксируем событие
                     if (isInPanelArea(clickX, clickY) || isInStatusBarArea(clickX, clickY)) {
                         // Временно отключаем pointer-events у drawingLayer
@@ -2492,15 +2492,15 @@
                         return;
                     }
                 });
-
+                
                 // Добавляем проксирование событий mouseenter для UI элементов
                 let lastHoveredElement = null;
                 drawingLayer.addEventListener('mousemove', (e) => {
                     if (rulersOverlay.style.display === 'none') return;
-
+                    
                     const mouseX = e.clientX;
                     const mouseY = e.clientY;
-
+                    
                     // Если курсор в области панели управления или статус-бара, проксируем события hover
                     if (isInPanelArea(mouseX, mouseY) || isInStatusBarArea(mouseX, mouseY)) {
                         // Временно отключаем pointer-events у drawingLayer
@@ -2509,7 +2509,7 @@
                         const elementUnder = document.elementFromPoint(mouseX, mouseY);
                         // Восстанавливаем pointer-events
                         drawingLayer.style.pointerEvents = 'auto';
-
+                        
                         // Если элемент изменился, отправляем события mouseleave/mouseenter
                         if (elementUnder !== lastHoveredElement) {
                             // Отправляем mouseleave предыдущему элементу
@@ -2522,7 +2522,7 @@
                                 });
                                 lastHoveredElement.dispatchEvent(leaveEvent);
                             }
-
+                            
                             // Отправляем mouseenter новому элементу
                             if (elementUnder) {
                                 const enterEvent = new MouseEvent('mouseenter', {
@@ -2533,10 +2533,10 @@
                                 });
                                 elementUnder.dispatchEvent(enterEvent);
                             }
-
+                            
                             lastHoveredElement = elementUnder;
                         }
-
+                        
                         // Всегда отправляем mousemove элементу под курсором
                         if (elementUnder) {
                             const moveEvent = new MouseEvent('mousemove', {
@@ -2547,7 +2547,7 @@
                             });
                             elementUnder.dispatchEvent(moveEvent);
                         }
-
+                        
                         // Устанавливаем обычный курсор для UI элементов
                         drawingLayer.style.cursor = 'default';
                 } else {
@@ -2562,9 +2562,9 @@
                             lastHoveredElement.dispatchEvent(leaveEvent);
                             lastHoveredElement = null;
                         }
-
+                        
                         // Логика изменения курсора для областей рисования
-                        const canDrawRect = !isInRulerArea(mouseX, mouseY) &&
+                        const canDrawRect = !isInRulerArea(mouseX, mouseY) && 
                                           !isInPanelArea(mouseX, mouseY) &&
                                           !isNearGuide(mouseX, mouseY) &&
                                           !isNearRectangleEdge(mouseX, mouseY) &&
@@ -2572,7 +2572,7 @@
                                           !draggingGuide &&
                                           !drawingRect &&
                                           resizingRectIdx === null;
-
+                        
                         // Изменяем курсор в зависимости от возможности рисования
                         if (canDrawRect) {
                             drawingLayer.style.cursor = 'crosshair';
@@ -2593,7 +2593,7 @@
                         }
                     }
                 });
-
+                
                 // Обрабатываем mouseup для создания прямоугольника
                 const origWindowMouseUp = window.onmouseup;
                 // Удаляем дублирующий обработчик - теперь обрабатывается в объединенном обработчике mouseup
@@ -2610,7 +2610,7 @@
                 { pos: 'sw', style: { left: '-4px', bottom: '-4px', cursor: 'nesw-resize' } },
                 { pos: 'w', style: { left: '-4px', top: 'calc(50% - 4px)', cursor: 'ew-resize' } }
             ];
-
+            
             handles.forEach(h => {
                 const handle = document.createElement('div');
                 Object.assign(handle.style, {
@@ -2626,13 +2626,13 @@
                     visibility: 'hidden',
                     ...h.style
                 });
-
+                
                 handle.addEventListener('mousedown', (e) => {
                     e.stopPropagation();
                     resizingRectIdx = idx;
                     resizingHandle = h.pos;
                     const rect = drawnRects[idx];
-
+                    
                     resizeStart = {
                         startX: e.clientX,
                         startY: e.clientY,
@@ -2642,22 +2642,22 @@
                         height: rect.height
                     };
                 });
-
+                
                 r.appendChild(handle);
             });
-
+            
             // Показывать ручки при наведении
             r.addEventListener('mouseenter', () => {
                 r.querySelectorAll('div').forEach(handle => {
                     handle.style.visibility = 'visible';
                 });
             });
-
+            
             // Скрывать ручки при уходе курсора
             r.addEventListener('mouseleave', () => {
                 // Не скрываем ручки если этот прямоугольник изменяется
                 if (resizingRectIdx === idx) return;
-
+                
                 r.querySelectorAll('div').forEach(handle => {
                     handle.style.visibility = 'hidden';
                 });
@@ -2683,7 +2683,7 @@
                     userSelect: 'none',
                     boxShadow: selectedGuides.v.includes(i) ? '0 0 8px 2px #ffd70099' : '',
                 });
-
+                
                 // Добавляем внутреннюю линию для визуального отображения
                 const innerLine = document.createElement('div');
                 Object.assign(innerLine.style, {
@@ -2697,7 +2697,7 @@
                     boxShadow: selectedGuides.v.includes(i) ? '0 0 8px 2px #ffd70099' : '',
                 });
                 g.appendChild(innerLine);
-
+                
                 g.title = 'Перетащите для перемещения, двойной клик — удалить, клик — выбрать для измерения';
                 g.addEventListener('mousedown', (e) => {
                     if (e.button !== 0) return;
@@ -2748,7 +2748,7 @@
                     userSelect: 'none',
                     boxShadow: selectedGuides.h.includes(i) ? '0 0 8px 2px #ffd70099' : '',
                 });
-
+                
                 // Добавляем внутреннюю линию для визуального отображения
                 const innerLine = document.createElement('div');
                 Object.assign(innerLine.style, {
@@ -2762,7 +2762,7 @@
                     boxShadow: selectedGuides.h.includes(i) ? '0 0 8px 2px #ffd70099' : '',
                 });
                 g.appendChild(innerLine);
-
+                
                 g.title = 'Перетащите для перемещения, двойной клик — удалить, клик — выбрать для измерения';
                 g.addEventListener('mousedown', (e) => {
                     if (e.button !== 0) return;
@@ -2820,16 +2820,16 @@
                         alignItems: 'center',
                         justifyContent: 'center'
                     });
-
+                    
                     // Создаем текстовую метку с размерами
                     const sizeLabel = document.createElement('div');
                     sizeLabel.textContent = `${Math.round(rect.width)}×${Math.round(rect.height)}`;
-
+                    
                     // Масштабируем размер шрифта в зависимости от размера прямоугольника
                     const minSize = Math.min(rect.width, rect.height);
                     const fontSize = Math.max(8, Math.min(16, minSize / 8));
                     const padding = Math.max(1, Math.min(4, minSize / 20));
-
+                    
                     Object.assign(sizeLabel.style, {
                         position: 'absolute',
                         left: '0',
@@ -2850,22 +2850,22 @@
                         zIndex: '2147483649',
                         transform: 'translateY(2px)'
                     });
-
+                    
                     // Добавляем метку в прямоугольник
                     r.appendChild(sizeLabel);
-
+                
                 // Удаление по двойному клику
                 r.addEventListener('dblclick', (e) => {
                     e.stopPropagation();
                     drawnRects.splice(idx, 1);
                     renderGuides();
                 });
-
+                
                 // Перемещение прямоугольника только для копирования с Shift
                 r.addEventListener('mousedown', (e) => {
                     // Если клик не на самом прямоугольнике (например, на маркере), игнорируем
                     if (e.target !== r) return;
-
+                    
                     // Если Shift зажат - копируем прямоугольник
                     if (e.shiftKey) {
                         e.stopPropagation();
@@ -2876,19 +2876,19 @@
                         renderGuides();
                         return;
                     }
-
+                    
                     // Стандартное перемещение теперь обрабатывается через makeRectDraggable
                 });
-
+                
                 // Добавляем маркеры для изменения размера
                 addResizeHandles(r, idx);
-
+                
                 // Добавляем возможность перетаскивания через makeRectDraggable
                 makeRectDraggable(r, idx);
-
+                
                 guidesContainer.appendChild(r);
             });
-
+            
             // Метки расстояния и временные элементы
             if (distanceLabel) guidesContainer.appendChild(distanceLabel);
             if (drawingRect && drawingRect.parentNode == null) {
@@ -2982,14 +2982,14 @@
             rulerH.height = 24;
             const ctxH = rulerH.getContext('2d');
             ctxH.clearRect(0, 0, rulerH.width, rulerH.height);
-
+            
             // Используем булевую переменную вместо сравнения строк
-
+            
             // Выбираем цвет линий и текста в зависимости от наведения
             ctxH.fillStyle = isRulerHHovered ? 'rgba(34,34,34,0.3)' : 'rgba(34,34,34,0.01)';
             ctxH.fillRect(0, 0, rulerH.width, 24);
             ctxH.strokeStyle = isRulerHHovered ? 'rgba(120,120,120,0.8)' : 'rgba(170,170,170,0.03)';
-
+            
             for (let x = 0; x < rulerH.width; x += 10) {
                 ctxH.beginPath();
                 ctxH.moveTo(x + 0.5, 24);
@@ -3001,20 +3001,20 @@
                     ctxH.fillText(x.toString(), x + 2, 12);
                 }
             }
-
+            
             // Вертикальная
             rulerV.width = 24;
             rulerV.height = window.innerHeight;
             const ctxV = rulerV.getContext('2d');
             ctxV.clearRect(0, 0, 24, rulerV.height);
-
+            
             // Используем булевую переменную вместо сравнения строк
-
+            
             // Выбираем цвет линий и текста в зависимости от наведения
             ctxV.fillStyle = isRulerVHovered ? 'rgba(34,34,34,0.3)' : 'rgba(34,34,34,0.01)';
             ctxV.fillRect(0, 0, 24, rulerV.height);
             ctxV.strokeStyle = isRulerVHovered ? 'rgba(120,120,120,0.8)' : 'rgba(170,170,170,0.03)';
-
+            
             for (let y = 0; y < rulerV.height; y += 10) {
                 ctxV.beginPath();
                 ctxV.moveTo(24, y + 0.5);
@@ -3026,7 +3026,7 @@
                     ctxV.fillText(y.toString(), 2, y + 10);
                 }
             }
-
+            
             // Рисуем вертикальные гайды на rulerH
             ctxH.strokeStyle = '#00eaff';
             vGuides.forEach(x => {
@@ -3035,7 +3035,7 @@
                 ctxH.lineTo(x + 0.5, 24);
                 ctxH.stroke();
             });
-
+            
             // Рисуем горизонтальные гайды на rulerV
             ctxV.strokeStyle = '#00eaff';
             hGuides.forEach(y => {
@@ -3057,23 +3057,23 @@
                     drawingLayer.style.display = 'block'; // Показываем слой для рисования
                 drawRulers();
                 renderGuides();
-
+                
                 // Активируем режим редактирования баннера
                 window.isRulersActive = true;
                 window.isBannerEditModeActive = true;
-
+                
                 // Обновляем цвет кнопки
                 updateRulersBtnColor();
             } else {
                 rulersOverlay.style.display = 'none';
                 guidesContainer.style.display = 'none';
                     drawingLayer.style.display = 'none'; // Скрываем слой для рисования
-
+                
                 // Деактивируем режим линеек
                 window.isRulersActive = false;
                 // Проверяем, остался ли активным режим изменения ширины
                 window.isBannerEditModeActive = window.isWidthControlActive === true;
-
+                
                 // Обновляем цвет кнопки
                 updateRulersBtnColor();
             }
@@ -3137,58 +3137,58 @@
         function makeRectDraggable(element, idx) {
             let isDragging = false;
             let offsetX, offsetY;
-
+            
             // Заменяем глобальный слушатель, добавляем прослушивание только на сам элемент
             element.addEventListener('mousedown', (e) => {
                 // Если клик не на самом прямоугольнике (например, на маркере), игнорируем
                 if (e.target !== element) return;
-
+                
                 // Если Shift зажат - копируем прямоугольник (эта функциональность уже реализована в обработчике)
                 if (e.shiftKey) return;
-
+                
                 // Проверяем, не перемещаем ли мы уже этот прямоугольник через другой механизм
                 if (movingRectIdx === idx) return;
-
+                
                 // Обычное перемещение
                 isDragging = true;
                 offsetX = e.clientX - parseInt(element.style.left);
                 offsetY = e.clientY - parseInt(element.style.top);
-
+                
                 // Добавляем визуальную обратную связь
                 element.style.cursor = 'move';
                 e.stopPropagation(); // Предотвращаем создание нового прямоугольника
             });
-
+            
             const moveHandler = (e) => {
                 if (isDragging) {
                     const newLeft = e.clientX - offsetX;
                     const newTop = e.clientY - offsetY;
-
+                    
                     // Обновляем DOM элемент
                     element.style.left = `${newLeft}px`;
                     element.style.top = `${newTop}px`;
-
+                    
                     // Синхронизируем с данными в массиве прямоугольников
                     if (drawnRects[idx]) {
                         drawnRects[idx].left = newLeft;
                         drawnRects[idx].top = newTop;
                     }
-
+                    
                     e.preventDefault();
                 }
             };
-
+            
             const upHandler = () => {
                 if (isDragging) {
                     isDragging = false;
                     element.style.cursor = 'grab';
                 }
             };
-
+            
             // Используем capture фазу для событий
             document.addEventListener('mousemove', moveHandler, true);
             document.addEventListener('mouseup', upHandler, true);
-
+            
             // Удаляем слушателей при удалении из DOM
             element.addEventListener('remove', () => {
                 document.removeEventListener('mousemove', moveHandler, true);
@@ -3200,12 +3200,12 @@
             // ЗАМЕНЕН НА ОБЪЕДИНЕННЫЙ ОБРАБОТЧИК ВЫШЕ
             /* drawingLayer.addEventListener('mousemove', (e) => {
                 if (rulersOverlay.style.display === 'none') return;
-
+                
                 const mouseX = e.clientX;
                 const mouseY = e.clientY;
-
+                
                 // Определяем, можно ли рисовать прямоугольник в данной позиции
-                const canDrawRect = !isInRulerArea(mouseX, mouseY) &&
+                const canDrawRect = !isInRulerArea(mouseX, mouseY) && 
                                   !isInPanelArea(mouseX, mouseY) &&
                                   !isInStatusBarArea(mouseX, mouseY) &&
                                   !isNearGuide(mouseX, mouseY) &&
@@ -3214,7 +3214,7 @@
                                   !draggingGuide &&
                                   !drawingRect &&
                                   resizingRectIdx === null;
-
+                
                 // Изменяем курсор в зависимости от возможности рисования
                 if (canDrawRect) {
                     drawingLayer.style.cursor = 'crosshair';
@@ -3238,31 +3238,31 @@
                     drawingLayer.style.cursor = 'default';
                 }
             });
-
+            
             drawingLayer.addEventListener('mouseleave', () => {
                 drawingLayer.style.cursor = 'default';
             }); */
         } // Закрываем функцию initializePanelComponents
-
+        
         // Запускаем проверку контейнера
         checkAnimationContainer();
     } // Закрываем функцию initAnimatePanel
 
     // === СИСТЕМА МОНИТОРИНГА И АВТОМАТИЧЕСКОГО ПЕРЕЗАПУСКА ===
-
+    
     // Глобальная переменная для предотвращения повторного запуска
     const SCRIPT_INSTANCE_KEY = 'aniplay_script_running';
-
+    
     // Проверяем, не запущен ли уже другой экземпляр скрипта
     if (window[SCRIPT_INSTANCE_KEY]) {
         console.log(`[AniPlay Monitor v${SCRIPT_VERSION}] Скрипт уже запущен, прекращение инициализации текущего экземпляра`);
         return;
     }
-
+    
     // Отмечаем что скрипт запущен
     window[SCRIPT_INSTANCE_KEY] = true;
     console.log(`[AniPlay Monitor v${SCRIPT_VERSION}] Инициализация системы мониторинга...`);
-
+    
     // Глобальные переменные для отслеживания состояния
     let isScriptInitialized = false;
     let isScriptInitializing = false; // Новый флаг для предотвращения одновременной инициализации
@@ -3270,7 +3270,7 @@
     let consecutiveChecks = 0;
     const MAX_CONSECUTIVE_CHECKS = 5;
     const CHECK_INTERVAL_MS = 2000;
-
+    
     // Функция проверки наличия баннера Adobe Animate
     function checkAnimateBannerExists() {
         // Проверяем наличие контейнера анимации
@@ -3278,35 +3278,35 @@
         if (!animationContainer) {
             return false;
         }
-
+        
         // Проверяем наличие createjs объектов
-        if (typeof createjs === 'undefined' ||
-            !createjs.Ticker ||
+        if (typeof createjs === 'undefined' || 
+            !createjs.Ticker || 
             typeof createjs.Ticker.framerate !== 'number') {
             return false;
         }
-
+        
         // Проверяем наличие exportRoot
         if (typeof window.exportRoot === 'undefined') {
             return false;
         }
-
+        
         console.log('[AniPlay Monitor] Баннер Adobe Animate обнаружен');
         return true;
     }
-
+    
     // Функция проверки, запущен ли скрипт (есть ли панель)
     function checkScriptRunning() {
         // Первичная проверка глобальной переменной
         if (!window[SCRIPT_INSTANCE_KEY]) {
             return false;
         }
-
+        
         // Улучшенный поиск панели с более точными критериями
         const existingPanels = document.querySelectorAll('div[style*="position: fixed"]');
         for (let panel of existingPanels) {
             // Проверяем наличие уникального класса или атрибутов нашей панели
-            if (panel.style.zIndex === '9999' &&
+            if (panel.style.zIndex === '9999' && 
                 (panel.querySelector('input[type="range"].frame-slider') ||
                  panel.querySelector('button[title*="FPS"]') ||
                  panel.querySelector('div[style*="font-weight: bold"][style*="color: #fff"]'))) {
@@ -3314,44 +3314,44 @@
                 return true;
             }
         }
-
+        
         // Дополнительная проверка по уникальному идентификатору
         if (document.querySelector('.aniplay-panel')) {
             console.log('[AniPlay Monitor] Найдена панель по классу');
             return true;
         }
-
+        
         return false;
     }
-
+    
     // Функция проверки успешного запуска панели на странице с баннером
     function checkPanelSuccessfullyLaunched() {
         const bannerExists = checkAnimateBannerExists();
         const scriptRunning = checkScriptRunning();
-
+        
         // Если баннер есть, то скрипт должен работать
         if (bannerExists && !scriptRunning) {
             return false; // Неуспешный запуск - баннер есть, но панель не работает
         }
-
+        
         // Если баннера нет, то проверка не нужна
         if (!bannerExists) {
             return true; // Считаем "успешным" - нет баннера, нет необходимости в панели
         }
-
+        
         // Баннер есть и скрипт работает - успех
         return true;
     }
-
+    
     // Функция мониторинга
     function monitorScriptState() {
         const scriptRunning = checkScriptRunning();
-
+        
         console.log(`[AniPlay Monitor] Проверка ${consecutiveChecks + 1}/${MAX_CONSECUTIVE_CHECKS}: Скрипт=${scriptRunning}`);
-
+        
         if (!scriptRunning) {
             consecutiveChecks++;
-
+            
             if (consecutiveChecks >= MAX_CONSECUTIVE_CHECKS) {
                 console.log('[AniPlay Monitor] Скрипт не запущен, попытка перезапуска...');
                 initializeScript();
@@ -3360,39 +3360,39 @@
         } else {
             // Сбрасываем счетчик если скрипт работает
             consecutiveChecks = 0;
-
+            
             // Если скрипт работает, отмечаем как инициализированный
             if (scriptRunning) {
                 isScriptInitialized = true;
             }
         }
     }
-
+    
     // Функция запуска мониторинга
     function startMonitoring() {
         if (monitoringInterval) {
             clearInterval(monitoringInterval);
         }
-
+        
         console.log('[AniPlay Monitor] Запуск системы мониторинга...');
         monitoringInterval = setInterval(monitorScriptState, CHECK_INTERVAL_MS);
     }
-
+    
     // Основная точка входа с мониторингом
     function mainEntry() {
         console.log(`[AniPlay Monitor v${SCRIPT_VERSION}] Запуск скрипта...`);
-
+        
         // Дополнительная проверка на уже запущенный скрипт
         if (checkScriptRunning()) {
             console.log(`[AniPlay Monitor v${SCRIPT_VERSION}] Скрипт уже запущен, отмена запуска нового экземпляра`);
             return;
         }
-
+        
         // Инициализируем скрипт напрямую без проверки баннера
         console.log(`[AniPlay Monitor v${SCRIPT_VERSION}] Инициализация скрипта...`);
         initializeScript();
     }
-
+    
     // Запуск при загрузке страницы
     if (document.readyState === 'loading') {
         window.addEventListener('load', mainEntry);
@@ -3400,19 +3400,19 @@
         // Если страница уже загружена
         mainEntry();
     }
-
+    
     // Дополнительная проверка при изменении DOM (для SPA)
     let domObserver = null;
     if (window.MutationObserver) {
         domObserver = new MutationObserver((mutations) => {
             let shouldCheck = false;
-
+            
             mutations.forEach((mutation) => {
                 if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
                     // Проверяем, добавились ли элементы связанные с Adobe Animate
                     mutation.addedNodes.forEach((node) => {
                         if (node.nodeType === 1) { // Element node
-                            if (node.id === 'animation_container' ||
+                            if (node.id === 'animation_container' || 
                                 node.id === 'canvas' ||
                                 (node.querySelector && (
                                     node.querySelector('#animation_container') ||
@@ -3424,7 +3424,7 @@
                     });
                 }
             });
-
+            
             // Проверяем состояние скрипта при обнаружении элементов баннера
             if (shouldCheck) {
                 console.log('[AniPlay Monitor] Обнаружены элементы баннера в DOM, проверка состояния...');
@@ -3434,17 +3434,17 @@
                         console.log('[AniPlay Monitor] Инициализация уже выполняется, пропуск DOM обработки');
                         return;
                     }
-
+                    
                     if (checkScriptRunning()) {
                         console.log('[AniPlay Monitor] Скрипт уже запущен, пропуск DOM обработки');
                         return;
                     }
-
+                    
                     const bannerExists = checkAnimateBannerExists();
                     const scriptRunning = checkScriptRunning();
-
+                    
                     console.log(`[AniPlay Monitor] DOM изменился: Баннер=${bannerExists}, Скрипт=${scriptRunning}, Инициализирован=${isScriptInitialized}`);
-
+                    
                     // Если баннер появился и скрипт не работает И не инициализирован - пытаемся инициализировать
                     if (bannerExists && !scriptRunning && !isScriptInitialized && !isScriptInitializing) {
                         console.log('[AniPlay Monitor] Баннер появился, скрипт не работает - попытка инициализации через DOM...');
@@ -3453,7 +3453,7 @@
                 }, 1000);
             }
         });
-
+        
         domObserver.observe(document.body, {
             childList: true,
             subtree: true
@@ -3472,38 +3472,38 @@
             console.log('[AniPlay Monitor] Инициализация уже выполняется, ожидание...');
             return;
         }
-
+        
         // Проверяем еще раз перед инициализацией
         if (checkScriptRunning()) {
             console.log('[AniPlay Monitor] Скрипт уже запущен, пропуск инициализации');
             return;
         }
-
+        
         // Проверяем флаг инициализации
         if (isScriptInitialized) {
             console.log('[AniPlay Monitor] Скрипт уже инициализирован, пропуск повторной инициализации');
             return;
         }
-
+        
         console.log('[AniPlay Monitor] Начало инициализации скрипта...');
         isScriptInitializing = true; // Устанавливаем флаг инициализации
         isScriptInitialized = true;
         consecutiveChecks = 0;
-
+        
         // Останавливаем мониторинг на время инициализации
         if (monitoringInterval) {
             clearInterval(monitoringInterval);
             monitoringInterval = null;
         }
-
+        
         // Запускаем основную функцию
         waitForCreatejsTickerAndInitPanel();
-
+        
         // Снимаем флаг инициализации через небольшую задержку
         setTimeout(() => {
             isScriptInitializing = false;
             console.log('[AniPlay Monitor] Инициализация завершена');
-
+            
             // Перезапускаем мониторинг через дополнительную задержку, но только если есть баннер
             setTimeout(() => {
                 if (checkAnimateBannerExists()) {
@@ -3514,23 +3514,23 @@
             }, 3000);
         }, 2000);
     }
-
+    
     // Функция очистки при завершении работы
     function cleanupScript() {
         console.log('[AniPlay Monitor] Очистка скрипта...');
         window[SCRIPT_INSTANCE_KEY] = false;
         isScriptInitialized = false;
         isScriptInitializing = false; // Очищаем и флаг инициализации
-
+        
         if (monitoringInterval) {
             clearInterval(monitoringInterval);
             monitoringInterval = null;
         }
     }
-
+    
     // Обработчик закрытия страницы
     window.addEventListener('beforeunload', cleanupScript);
-
+    
     // Обработчик видимости страницы (для SPA)
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
@@ -3541,15 +3541,15 @@
             console.log('[AniPlay Monitor] Страница стала видимой');
         }
     });
-
+    
     // Функция мониторинга
     function monitorScriptState() {
         const bannerExists = checkAnimateBannerExists();
         const scriptRunning = checkScriptRunning();
         const panelLaunched = checkPanelSuccessfullyLaunched();
-
+        
         console.log(`[AniPlay Monitor] Проверка ${consecutiveChecks + 1}/${MAX_CONSECUTIVE_CHECKS}: Баннер=${bannerExists}, Скрипт=${scriptRunning}, Успешный_запуск=${panelLaunched}`);
-
+        
         // Если нет баннера - останавливаем мониторинг
         if (!bannerExists) {
             console.log('[AniPlay Monitor] Баннер не обнаружен, остановка мониторинга');
@@ -3559,11 +3559,11 @@
             }
             return;
         }
-
+        
         // Если есть баннер, но панель не запущена
         if (!panelLaunched) {
             consecutiveChecks++;
-
+            
             if (consecutiveChecks >= MAX_CONSECUTIVE_CHECKS) {
                 console.log('[AniPlay Monitor] Панель не запущена на странице с баннером, попытка перезапуска...');
                 isScriptInitialized = false; // Сбрасываем флаг для возможности перезапуска
@@ -3573,14 +3573,14 @@
         } else {
             // Сбрасываем счетчик если все работает корректно
             consecutiveChecks = 0;
-
+            
             // Если панель успешно запущена, отмечаем как инициализированную
             if (panelLaunched) {
                 isScriptInitialized = true;
             }
         }
     }
-
+    
     // Функция запуска мониторинга
     function startMonitoring() {
         // Запускаем мониторинг только если есть баннер
@@ -3588,29 +3588,29 @@
             console.log('[AniPlay Monitor] Баннер не обнаружен, мониторинг не запускается');
             return;
         }
-
+        
         if (monitoringInterval) {
             clearInterval(monitoringInterval);
         }
-
+        
         console.log('[AniPlay Monitor] Запуск системы мониторинга...');
         monitoringInterval = setInterval(monitorScriptState, CHECK_INTERVAL_MS);
     }
-
+    
     // Основная точка входа с мониторингом
     function mainEntry() {
         console.log(`[AniPlay Monitor v${SCRIPT_VERSION}] Запуск скрипта...`);
-
+        
         // Дополнительная проверка на уже запущенный скрипт
         if (checkScriptRunning()) {
             console.log(`[AniPlay Monitor v${SCRIPT_VERSION}] Скрипт уже запущен, отмена запуска нового экземпляра`);
             return;
         }
-
+        
         // Проверяем наличие баннера
         const bannerExists = checkAnimateBannerExists();
         console.log(`[AniPlay Monitor v${SCRIPT_VERSION}] Баннер обнаружен: ${bannerExists}`);
-
+        
         if (bannerExists) {
             // Если есть баннер - инициализируем скрипт и запускаем мониторинг
             console.log(`[AniPlay Monitor v${SCRIPT_VERSION}] Инициализация скрипта для страницы с баннером...`);
