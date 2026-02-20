@@ -715,11 +715,9 @@
         let addAreaDrawing = false;
         let addAreaStartX = 0, addAreaStartY = 0;
         let addAreaTempRect = null;
-        let commentCardEl = null;
-        let openCommentCardFrame = null;
-        let openCommentCardAreaIndex = null;
         let expandedCommentFrame = null;
         let expandedCommentAreaIndex = null;
+        let isCommentTextEditing = false;
         function getCurrentFrame1Based() {
             if (typeof window.exportRoot === 'undefined') return 1;
             const cf = typeof window.exportRoot.currentFrame === 'number'
@@ -760,36 +758,9 @@
             });
             return items;
         }
-        function openCommentCard(frame, areaIndex, boxEl) {
-            const areas = commentAreasByFrame[frame] || [];
-            const area = areas[areaIndex];
-            if (!area || !commentCardEl) return;
-            openCommentCardFrame = frame;
-            openCommentCardAreaIndex = areaIndex;
-            const textarea = commentCardEl.querySelector('textarea');
-            if (textarea) textarea.value = (area.t && String(area.t)) || '';
-            const r = boxEl.getBoundingClientRect();
-            const cardW = 280;
-            const cardH = 180;
-            const pad = 8;
-            let left = r.right + pad;
-            let top = r.top;
-            if (left + cardW > window.innerWidth) left = r.left - cardW - pad;
-            if (left < 0) left = pad;
-            if (top + cardH > window.innerHeight) top = window.innerHeight - cardH - pad;
-            if (top < 0) top = pad;
-            commentCardEl.style.left = left + 'px';
-            commentCardEl.style.top = top + 'px';
-            commentCardEl.style.display = 'block';
-            if (textarea) setTimeout(function () { textarea.focus(); }, 50);
-        }
-        function closeCommentCard() {
-            openCommentCardFrame = null;
-            openCommentCardAreaIndex = null;
-            if (commentCardEl) commentCardEl.style.display = 'none';
-        }
         function renderCommentAreas() {
             if (!commentAreasContainer) return;
+            if (isCommentTextEditing) return;
             commentAreasContainer.innerHTML = '';
             const frame = getCurrentFrame1Based();
             if (frame !== expandedCommentFrame) {
@@ -837,33 +808,83 @@
                         boxSizing: 'border-box'
                     });
                     const textPanel = document.createElement('div');
-                    textPanel.style.cssText = 'padding:8px 10px;background:rgba(255,255,255,0.95);border:1px solid rgba(251,191,36,0.4);border-radius:6px;font-size:12px;color:#1a1a1a;white-space:pre-wrap;word-break:break-word;line-height:1.4;max-height:120px;overflow-y:auto';
+                    textPanel.style.cssText = 'padding:8px 10px;background:rgba(255,255,255,0.95);border:1px solid rgba(251,191,36,0.4);border-radius:6px;font-family:Impact,sans-serif;font-size:12px;color:#1a1a1a;white-space:pre-wrap;word-break:break-word;line-height:1.4;max-height:120px;overflow-y:auto';
                     textPanel.textContent = t || '(нет текста)';
+                    textPanel.title = 'Двойной клик — редактировать';
                     belowPanel.appendChild(textPanel);
-                    const editBtn = document.createElement('button');
-                    editBtn.textContent = '✏';
-                    editBtn.type = 'button';
-                    editBtn.title = 'Редактировать';
-                    Object.assign(editBtn.style, {
-                        marginTop: '6px',
-                        width: '26px',
-                        height: '26px',
-                        padding: '0',
-                        fontSize: '14px',
-                        border: 'none',
-                        borderRadius: '4px',
-                        background: '#0d6efd',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    });
-                    editBtn.addEventListener('click', function (e) {
+                    function exitCommentEditMode(save) {
+                        if (textPanel.getAttribute('data-comment-editing') !== '1') return;
+                        isCommentTextEditing = false;
+                        textPanel.removeAttribute('data-comment-editing');
+                        textPanel.setAttribute('contenteditable', 'false');
+                        textPanel.style.borderColor = 'rgba(251,191,36,0.4)';
+                        if (saveBtn) saveBtn.style.display = 'none';
+                        if (save) {
+                            const newText = (textPanel.textContent || '').trim().slice(0, 200);
+                            const areas = commentAreasByFrame[frame] || [];
+                            if (areas[areaIndex]) {
+                                areas[areaIndex].t = newText;
+                                renderCommentAreas();
+                                updateUrlWithFrameAndAreas(getCurrentFrame1Based());
+                                if (typeof renderErrorsList === 'function') renderErrorsList();
+                            }
+                        } else {
+                            renderCommentAreas();
+                        }
+                    }
+                    const saveBtn = document.createElement('button');
+                    saveBtn.textContent = 'Сохранить';
+                    saveBtn.type = 'button';
+                    saveBtn.title = 'Подтвердить редактирование';
+                    saveBtn.style.cssText = 'display:none;margin-top:6px;margin-right:8px;font-size:12px;padding:4px 10px;border-radius:4px;border:none;background:#0d6efd;color:#fff;cursor:pointer';
+                    saveBtn.addEventListener('click', function (e) {
                         e.stopPropagation();
-                        openCommentCard(frame, areaIndex, belowPanel);
+                        exitCommentEditMode(true);
                     });
-                    belowPanel.appendChild(editBtn);
+                    belowPanel.appendChild(saveBtn);
+                    textPanel.addEventListener('dblclick', function (e) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        isCommentTextEditing = true;
+                        textPanel.setAttribute('contenteditable', 'true');
+                        textPanel.setAttribute('data-comment-editing', '1');
+                        textPanel.style.borderColor = 'rgba(13, 110, 253, 0.7)';
+                        saveBtn.style.display = 'inline-block';
+                        textPanel.focus();
+                    });
+                    textPanel.addEventListener('keydown', function (e) {
+                        if (textPanel.getAttribute('data-comment-editing') !== '1') return;
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            exitCommentEditMode(true);
+                        } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            exitCommentEditMode(false);
+                        }
+                    });
+                    textPanel.addEventListener('blur', function (e) {
+                        if (textPanel.getAttribute('data-comment-editing') !== '1') return;
+                        if (e.relatedTarget && (saveBtn.contains(e.relatedTarget) || (deleteLink && deleteLink.contains(e.relatedTarget)))) return;
+                        exitCommentEditMode(false);
+                    });
+                    const deleteLink = document.createElement('button');
+                    deleteLink.textContent = 'Удалить';
+                    deleteLink.type = 'button';
+                    deleteLink.title = 'Удалить комментарий';
+                    deleteLink.style.cssText = 'margin-top:6px;font-size:11px;color:#dc3545;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline';
+                    deleteLink.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        isCommentTextEditing = false;
+                        const areas = commentAreasByFrame[frame] || [];
+                        if (areas.length > areaIndex) {
+                            areas.splice(areaIndex, 1);
+                            renderCommentAreas();
+                            if (typeof renderErrorsList === 'function') renderErrorsList();
+                            if (!hasAnyCommentAreas()) clearCommentParamsFromUrl();
+                            else updateUrlWithFrameAndAreas(getCurrentFrame1Based());
+                        }
+                    });
+                    belowPanel.appendChild(deleteLink);
                     commentAreasContainer.appendChild(belowPanel);
                 } else {
                     Object.assign(box.style, {
@@ -923,71 +944,6 @@
             });
             commentAreasOverlay.appendChild(commentAreasContainer);
             document.body.appendChild(commentAreasOverlay);
-            commentCardEl = document.createElement('div');
-            commentCardEl.style.cssText = 'display:none;position:fixed;z-index:10000;width:280px;min-height:120px;background:#fff;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.15);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:13px;overflow:hidden';
-            const cardTitle = document.createElement('div');
-            cardTitle.textContent = 'Комментарий';
-            cardTitle.style.cssText = 'padding:10px 12px;font-weight:600;color:#333;border-bottom:1px solid #eee';
-            commentCardEl.appendChild(cardTitle);
-            const cardTextarea = document.createElement('textarea');
-            cardTextarea.rows = 4;
-            cardTextarea.placeholder = 'Текст комментария…';
-            cardTextarea.style.cssText = 'width:100%;box-sizing:border-box;padding:10px 12px;margin:0;border:none;resize:vertical;min-height:72px;font-size:13px;line-height:1.45;color:#333';
-            commentCardEl.appendChild(cardTextarea);
-            const cardActions = document.createElement('div');
-            cardActions.style.cssText = 'display:flex;gap:8px;padding:8px 12px;border-top:1px solid #eee;background:#fafafa';
-            const saveBtn = document.createElement('button');
-            saveBtn.textContent = 'Сохранить';
-            saveBtn.style.cssText = 'padding:6px 14px;border-radius:6px;border:none;background:#0d6efd;color:#fff;font-size:13px;cursor:pointer';
-            const deleteBtn = document.createElement('button');
-            deleteBtn.textContent = 'Удалить';
-            deleteBtn.style.cssText = 'padding:6px 14px;border-radius:6px;border:none;background:#dc3545;color:#fff;font-size:13px;cursor:pointer';
-            saveBtn.addEventListener('click', function () {
-                if (openCommentCardFrame == null || openCommentCardAreaIndex == null) return;
-                const areas = commentAreasByFrame[openCommentCardFrame];
-                if (areas && areas[openCommentCardAreaIndex]) {
-                    areas[openCommentCardAreaIndex].t = (cardTextarea.value || '').slice(0, 200);
-                    renderCommentAreas();
-                    updateUrlWithFrameAndAreas(getCurrentFrame1Based());
-                    if (typeof renderErrorsList === 'function') renderErrorsList();
-                }
-                closeCommentCard();
-            });
-            deleteBtn.addEventListener('click', function () {
-                if (openCommentCardFrame == null || openCommentCardAreaIndex == null) return;
-                const areas = commentAreasByFrame[openCommentCardFrame];
-                if (areas && areas.length > openCommentCardAreaIndex) {
-                    areas.splice(openCommentCardAreaIndex, 1);
-                    renderCommentAreas();
-                    if (typeof renderErrorsList === 'function') renderErrorsList();
-                    if (typeof window.exportRoot !== 'undefined' && typeof window.exportRoot.gotoAndStop === 'function') {
-                        window.exportRoot.gotoAndStop(0);
-                        window.exportRoot.paused = false;
-                        if (typeof fullUpdateSlider === 'function') fullUpdateSlider();
-                        if (typeof updatePauseButton === 'function') updatePauseButton();
-                    }
-                    if (!hasAnyCommentAreas()) {
-                        clearCommentParamsFromUrl();
-                    } else {
-                        updateUrlWithFrameAndAreas(1);
-                    }
-                }
-                closeCommentCard();
-            });
-            cardActions.appendChild(saveBtn);
-            cardActions.appendChild(deleteBtn);
-            commentCardEl.appendChild(cardActions);
-            commentCardEl.addEventListener('click', function (e) { e.stopPropagation(); });
-            document.body.appendChild(commentCardEl);
-            window.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape' && openCommentCardFrame != null) closeCommentCard();
-            });
-            document.addEventListener('click', function (e) {
-                if (openCommentCardFrame == null) return;
-                if (commentCardEl && commentCardEl.contains(e.target)) return;
-                if (commentAreasContainer && commentAreasContainer.contains(e.target)) return;
-                closeCommentCard();
-            });
             addAreaOverlay = document.createElement('div');
             Object.assign(addAreaOverlay.style, {
                 position: 'fixed',
@@ -2239,36 +2195,6 @@
 
         btnContainer.appendChild(pauseBtn);
 
-        // Функция создания кнопки с иконкой и hover-эффектом - оставляем для возможного использования в будущем
-        function addIconButton(iconName, title, onClick) {
-            const btn = document.createElement('button');
-            const icon = document.createElement('span');
-            icon.className = 'material-icons';
-            icon.textContent = iconName;
-            btn.appendChild(icon);
-            btn.title = title;
-            Object.assign(btn.style, {
-                width: '32px',
-                height: '32px',
-                padding: '0',
-                margin: '0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'rgba(0,0,0,0.5)',
-                border: 'none',
-                borderRadius: '4px',
-                color: '#fff',
-                cursor: 'pointer',
-                transition: 'background 0.2s'
-            });
-            // hover
-            btn.addEventListener('mouseenter', () => { btn.style.background = 'rgba(255,255,255,0.2)'; });
-            btn.addEventListener('mouseleave', () => { btn.style.background = 'rgba(0,0,0,0.5)'; });
-            btn.addEventListener('click', () => { onClick(); });
-            btnContainer.appendChild(btn);
-        }
-
         // === Кнопка сворачивания ===
         const collapseBtn = document.createElement('button');
         const collapseIcon = document.createElement('span');
@@ -2365,9 +2291,6 @@
         panel.style.transition = 'opacity 0.3s, width 0.2s, height 0.2s, background 0.2s';
 
         // === devicePixelRatio compensation ===
-        function getZoomCompensated(val) {
-            return Math.round(val);
-        }
         function getUnzoomCompensated(val) {
             return Math.round(val);
         }
@@ -2818,7 +2741,7 @@
                 }
 
                 // === СОЗДАНИЕ ПРЯМОУГОЛЬНИКОВ ===
-                if (drawingRect && drawingStart && drawingRectData && currentDrawingMode === 'rectangle') {
+                if (drawingRect && drawingStart && drawingRectData) {
                     if (drawingRectData.width < 1 || drawingRectData.height < 1) {
                         if (drawingRect.parentNode) drawingRect.parentNode.removeChild(drawingRect);
                     } else {
@@ -2838,43 +2761,6 @@
                     }, 300);
 
                     return; // Выходим, чтобы не выполнять другие обработчики
-                }
-
-                // === СОЗДАНИЕ СТРЕЛОК ===
-                if (drawingArrow && drawingStart && drawingArrowData && currentDrawingMode === 'arrow') {
-                    console.log(`[Drawing Debug v1.42] Завершение рисования стрелки, длина: ${Math.sqrt((drawingArrowData.endX - drawingArrowData.startX)**2 + (drawingArrowData.endY - drawingArrowData.startY)**2)}`);
-
-                    const dx = drawingArrowData.endX - drawingArrowData.startX;
-                    const dy = drawingArrowData.endY - drawingArrowData.startY;
-                    const length = Math.sqrt(dx * dx + dy * dy);
-
-                    if (length < 10) { // Минимальная длина стрелки
-                        if (drawingArrow.parentNode) drawingArrow.parentNode.removeChild(drawingArrow);
-                        console.log('[Drawing Debug v1.42] Стрелка слишком короткая, удаляем');
-                    } else {
-                        drawnArrows.push({ ...drawingArrowData });
-                        saveGuides();
-                        console.log('[Drawing Debug v1.42] ✅ Стрелка сохранена! Остаемся в режиме рисования для следующей стрелки');
-                    }
-
-                    // Очищаем временную стрелку, но НЕ выходим из режима рисования стрелок
-                    if (drawingArrow && drawingArrow.parentNode) drawingArrow.parentNode.removeChild(drawingArrow);
-                    drawingArrow = null;
-                    drawingStart = null;
-                    drawingArrowData = null;
-                    renderGuides();
-
-                    console.log(`[Drawing Debug v1.42] ✅ Режим после завершения стрелки: ${currentDrawingMode}, готов к новому рисованию`);
-
-                    // Устанавливаем флаг недавно завершенного рисования
-                    recentlyFinishedDrawing = true;
-                    setTimeout(() => {
-                        recentlyFinishedDrawing = false;
-                        console.log('[Drawing Debug v1.42] 🔓 Блокировка guidesContainer снята');
-                    }, 300); // Увеличиваем до 300мс
-
-                    // НЕ ВОЗВРАЩАЕМСЯ! Остаемся в режиме рисования стрелок для следующей стрелки
-                    // Пользователь может продолжить рисовать стрелки без переключения режима
                 }
 
                 // === ИЗМЕНЕНИЕ РАЗМЕРА ПРЯМОУГОЛЬНИКОВ ===
@@ -2909,13 +2795,6 @@
         let drawingStart = null;
         let drawingRectData = null;
 
-        // === Стрелки ===
-        let drawnArrows = [];
-        let drawingArrow = null;
-        let drawingArrowData = null;
-
-        // === Режимы рисования ===
-        let currentDrawingMode = 'rectangle'; // 'rectangle' или 'arrow'
         // === Resize state ===
         let resizingRectIdx = null;
         let resizingHandle = null;
@@ -2924,18 +2803,12 @@
         let movingRectIdx = null;
         let moveStart = null;
         let moveOrig = null;
-        // === Arrow edit state ===
-        let editingArrowIdx = null;
-        let editingArrowPoint = null; // 'start' или 'end'
-        let arrowEditStart = null;
         // Восстановление из localStorage
         try {
             const saved = JSON.parse(localStorage.getItem('animatePanelGuides') || '{}');
             if (Array.isArray(saved.h)) hGuides = saved.h;
             if (Array.isArray(saved.v)) vGuides = saved.v;
             if (Array.isArray(saved.rects)) drawnRects = saved.rects;
-            if (Array.isArray(saved.arrows)) drawnArrows = saved.arrows;
-            if (saved.drawingMode) currentDrawingMode = saved.drawingMode;
         } catch {}
         // Контейнер для div-гайдов
         const guidesContainer = document.createElement('div');
@@ -2950,228 +2823,6 @@
         });
         guidesContainer.style.display = 'none';
         document.body.appendChild(guidesContainer);
-
-        // === Статус-бар для переключения режимов рисования (макс. 2 кнопки в ряд) ===
-        const statusBar = document.createElement('div');
-        Object.assign(statusBar.style, {
-            position: 'fixed',
-            bottom: '0',
-            left: '0',
-            width: '100vw',
-            minHeight: '50px',
-            background: 'rgba(30, 30, 30, 0.9)',
-            backdropFilter: 'blur(4px)',
-            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-            display: 'none',
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            padding: '8px',
-            zIndex: '2147483645',
-            boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.2)',
-            userSelect: 'none'
-        });
-
-        // Кнопка режима прямоугольников (иконка, макс. 2 в ряд)
-        const rectModeBtn = document.createElement('button');
-        rectModeBtn.innerHTML = '<span class="material-icons" style="font-size:22px;">crop_square</span>';
-        rectModeBtn.title = 'Прямоугольники';
-        Object.assign(rectModeBtn.style, {
-            padding: '8px 12px',
-            fontSize: '14px',
-            fontWeight: 'bold',
-            background: 'rgba(33, 150, 243, 0.8)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
-            fontFamily: 'Arial, sans-serif',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flex: '0 0 calc(50% - 14px)',
-            minWidth: '80px'
-        });
-
-        // Кнопка режима стрелок (иконка)
-        const arrowModeBtn = document.createElement('button');
-        arrowModeBtn.innerHTML = '<span class="material-icons" style="font-size:22px;">arrow_forward</span>';
-        arrowModeBtn.title = 'Стрелки';
-        Object.assign(arrowModeBtn.style, {
-            padding: '8px 12px',
-            fontSize: '14px',
-            fontWeight: 'bold',
-            background: 'rgba(100, 100, 100, 0.6)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
-            fontFamily: 'Arial, sans-serif',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flex: '0 0 calc(50% - 14px)',
-            minWidth: '80px'
-        });
-
-        // Кнопка очистки всех элементов (иконка)
-        const clearAllBtn = document.createElement('button');
-        clearAllBtn.innerHTML = '<span class="material-icons" style="font-size:22px;">delete_sweep</span>';
-        clearAllBtn.title = 'Очистить всё';
-        Object.assign(clearAllBtn.style, {
-            padding: '8px 12px',
-            fontSize: '14px',
-            fontWeight: 'bold',
-            background: 'rgba(244, 67, 54, 0.8)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
-            fontFamily: 'Arial, sans-serif',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flex: '0 0 calc(50% - 14px)',
-            minWidth: '80px'
-        });
-
-        // Индикатор текущего режима
-        const modeIndicator = document.createElement('div');
-        modeIndicator.textContent = 'Режим: Прямоугольники';
-        Object.assign(modeIndicator.style, {
-            padding: '8px 12px',
-            fontSize: '12px',
-            color: 'rgba(255, 255, 255, 0.7)',
-            background: 'rgba(0, 0, 0, 0.3)',
-            borderRadius: '4px',
-            fontFamily: 'Arial, sans-serif'
-        });
-
-        // Дополнительная подсказка для режима стрелок
-        const arrowTip = document.createElement('div');
-        arrowTip.textContent = 'Наведитесь на стрелку для редактирования точек';
-        Object.assign(arrowTip.style, {
-            padding: '4px 8px',
-            fontSize: '11px',
-            color: 'rgba(255, 255, 255, 0.5)',
-            background: 'rgba(76, 175, 80, 0.2)',
-            borderRadius: '3px',
-            fontFamily: 'Arial, sans-serif',
-            display: 'none'
-        });
-
-        // Функция обновления активной кнопки
-        function updateModeButtons() {
-            if (currentDrawingMode === 'rectangle') {
-                rectModeBtn.style.background = 'rgba(33, 150, 243, 0.8)';
-                arrowModeBtn.style.background = 'rgba(100, 100, 100, 0.6)';
-                modeIndicator.textContent = 'Режим: Прямоугольники | Кликните и перетащите | Escape - отмена';
-                arrowTip.style.display = 'none';
-            } else {
-                rectModeBtn.style.background = 'rgba(100, 100, 100, 0.6)';
-                arrowModeBtn.style.background = 'rgba(76, 175, 80, 0.8)';
-                modeIndicator.textContent = 'Режим: Стрелки | Рисуйте поочередно (v1.41) | Escape - отмена | Переключение режима - выход';
-                arrowTip.style.display = 'block';
-            }
-            saveGuides();
-        }
-
-        // Функция для завершения текущего рисования
-        function finishCurrentDrawing() {
-            // Завершаем рисование стрелки, если оно активно
-            if (drawingArrow && drawingStart && drawingArrowData) {
-                const dx = drawingArrowData.endX - drawingArrowData.startX;
-                const dy = drawingArrowData.endY - drawingArrowData.startY;
-                const length = Math.sqrt(dx * dx + dy * dy);
-
-                if (length >= 10) { // Сохраняем стрелку если она достаточно длинная
-                    drawnArrows.push({ ...drawingArrowData });
-                    console.log('[Mode Switch] Незавершенная стрелка сохранена при переключении режима');
-                }
-
-                // Очищаем временные элементы
-                if (drawingArrow && drawingArrow.parentNode) {
-                    drawingArrow.parentNode.removeChild(drawingArrow);
-                }
-                drawingArrow = null;
-                drawingStart = null;
-                drawingArrowData = null;
-            }
-
-            // Завершаем рисование прямоугольника, если оно активно
-            if (drawingRect && drawingStart && drawingRectData) {
-                if (drawingRectData.width >= 1 && drawingRectData.height >= 1) {
-                    drawnRects.push({ ...drawingRectData });
-                    console.log('[Mode Switch] Незавершенный прямоугольник сохранен при переключении режима');
-                }
-
-                // Очищаем временные элементы
-                if (drawingRect && drawingRect.parentNode) {
-                    drawingRect.parentNode.removeChild(drawingRect);
-                }
-                drawingRect = null;
-                drawingStart = null;
-                drawingRectData = null;
-            }
-
-            saveGuides();
-            renderGuides();
-        }
-
-        // Обработчики кнопок
-        rectModeBtn.addEventListener('click', () => {
-            finishCurrentDrawing(); // Завершаем текущее рисование перед переключением
-            currentDrawingMode = 'rectangle';
-            updateModeButtons();
-        });
-
-        arrowModeBtn.addEventListener('click', () => {
-            finishCurrentDrawing(); // Завершаем текущее рисование перед переключением
-            currentDrawingMode = 'arrow';
-            updateModeButtons();
-        });
-
-        clearAllBtn.addEventListener('click', () => {
-            if (confirm('Удалить все прямоугольники и стрелки?')) {
-                drawnRects = [];
-                drawnArrows = [];
-                renderGuides();
-                saveGuides();
-            }
-        });
-
-        // Hover эффекты
-        [rectModeBtn, arrowModeBtn, clearAllBtn].forEach(btn => {
-            btn.addEventListener('mouseenter', () => {
-                btn.style.transform = 'translateY(-1px)';
-                btn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
-            });
-            btn.addEventListener('mouseleave', () => {
-                btn.style.transform = 'translateY(0)';
-                btn.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.2)';
-            });
-        });
-
-        // Добавляем элементы в статус-бар
-        statusBar.appendChild(rectModeBtn);
-        statusBar.appendChild(arrowModeBtn);
-        statusBar.appendChild(clearAllBtn);
-        statusBar.appendChild(modeIndicator);
-        statusBar.appendChild(arrowTip);
-
-        // Добавляем статус-бар в DOM
-        document.body.appendChild(statusBar);
-
-        // Обновляем начальное состояние кнопок
-        updateModeButtons();
 
             // Создаем специальный слой для перехвата событий рисования
             const drawingLayer = document.createElement('div');
@@ -3193,9 +2844,7 @@
             localStorage.setItem('animatePanelGuides', JSON.stringify({
                 h: hGuides,
                 v: vGuides,
-                rects: drawnRects,
-                arrows: drawnArrows,
-                drawingMode: currentDrawingMode
+                rects: drawnRects
             }));
         }
 
@@ -3222,69 +2871,25 @@
                     return false;
                 }
 
-                // Функция для проверки, находится ли клик рядом с прямоугольником или стрелкой
+                // Функция для проверки, находится ли клик рядом с прямоугольником
                 function isNearRectangleEdge(x, y, threshold = 4) {
-                    // Проверяем прямоугольники
                     for (let rect of drawnRects) {
-                        // Проверяем близость к краям прямоугольника
                         const left = rect.left;
                         const right = rect.left + rect.width;
                         const top = rect.top;
                         const bottom = rect.top + rect.height;
 
-                        // Проверяем близость к вертикальным краям
                         if ((Math.abs(x - left) <= threshold || Math.abs(x - right) <= threshold) &&
                             y >= top - threshold && y <= bottom + threshold) {
                             return true;
                         }
 
-                        // Проверяем близость к горизонтальным краям
                         if ((Math.abs(y - top) <= threshold || Math.abs(y - bottom) <= threshold) &&
                             x >= left - threshold && x <= right + threshold) {
                             return true;
                         }
                     }
-
-                    // Проверяем стрелки
-                    for (let arrow of drawnArrows) {
-                        // Проверяем близость к начальной и конечной точкам стрелки
-                        const startDistance = Math.sqrt((x - arrow.startX) ** 2 + (y - arrow.startY) ** 2);
-                        const endDistance = Math.sqrt((x - arrow.endX) ** 2 + (y - arrow.endY) ** 2);
-
-                        if (startDistance <= threshold * 3 || endDistance <= threshold * 3) {
-                            return true;
-                        }
-
-                        // Проверяем близость к линии стрелки
-                        const lineDistance = distanceToLineSegment(x, y, arrow.startX, arrow.startY, arrow.endX, arrow.endY);
-                        if (lineDistance <= threshold) {
-                            return true;
-                        }
-                    }
-
                     return false;
-                }
-
-                // Функция для вычисления расстояния от точки до отрезка
-                function distanceToLineSegment(px, py, x1, y1, x2, y2) {
-                    const dx = x2 - x1;
-                    const dy = y2 - y1;
-                    const length = Math.sqrt(dx * dx + dy * dy);
-
-                    if (length === 0) {
-                        // Если отрезок вырожденный (точка), возвращаем расстояние до точки
-                        return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2);
-                    }
-
-                    // Параметр t для проекции точки на прямую
-                    const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / (length * length)));
-
-                    // Ближайшая точка на отрезке
-                    const nearestX = x1 + t * dx;
-                    const nearestY = y1 + t * dy;
-
-                    // Расстояние от точки до ближайшей точки на отрезке
-                    return Math.sqrt((px - nearestX) ** 2 + (py - nearestY) ** 2);
                 }
 
                 // Функция для проверки, находится ли клик в области линеек
@@ -3307,207 +2912,6 @@
                     }
                 }
 
-                // Функция для проверки, находится ли клик в области статус-бара
-                function isInStatusBarArea(x, y) {
-                    // Проверяем, что statusBar существует
-                    if (typeof statusBar === 'undefined' || !statusBar) {
-                        return false;
-                    }
-                    try {
-                        const statusBarRect = statusBar.getBoundingClientRect();
-                        return x >= statusBarRect.left && x <= statusBarRect.right &&
-                               y >= statusBarRect.top && y <= statusBarRect.bottom;
-                    } catch (e) {
-                        return false;
-                    }
-                }
-
-                // Функция для создания стрелки из двух точек
-                function createArrowElement(startX, startY, endX, endY, isTemporary = false) {
-                    const dx = endX - startX;
-                    const dy = endY - startY;
-                    const length = Math.sqrt(dx * dx + dy * dy);
-                    const angle = Math.atan2(dy, dx);
-
-                    // Контейнер для стрелки
-                    const arrowContainer = document.createElement('div');
-                    arrowContainer.className = 'arrow-container';
-                    Object.assign(arrowContainer.style, {
-                        position: 'fixed',
-                        left: '0',
-                        top: '0',
-                        width: '100vw',
-                        height: '100vh',
-                        pointerEvents: 'auto',
-                        zIndex: '2147483648'
-                    });
-
-                    // Основная линия стрелки
-                    const arrowLine = document.createElement('div');
-                    arrowLine.className = 'arrow-line';
-                    Object.assign(arrowLine.style, {
-                        position: 'absolute',
-                        left: `${startX}px`,
-                        top: `${startY}px`,
-                        width: `${length}px`,
-                        height: '3px',
-                        background: 'rgba(76, 175, 80, 0.9)',
-                        transformOrigin: '0 50%',
-                        transform: `rotate(${angle}rad)`,
-                        pointerEvents: 'auto',
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)',
-                        borderRadius: '1px'
-                    });
-
-                    // Головка стрелки
-                    const arrowHead = document.createElement('div');
-                    arrowHead.className = 'arrow-head';
-                    const headSize = Math.max(8, Math.min(20, length / 4));
-                    Object.assign(arrowHead.style, {
-                        position: 'absolute',
-                        right: '-2px', // Сдвигаем немного влево для лучшего соединения
-                        top: '50%',
-                        width: '0',
-                        height: '0',
-                        borderLeft: `${headSize}px solid rgba(76, 175, 80, 0.9)`,
-                        borderTop: `${headSize / 2}px solid transparent`,
-                        borderBottom: `${headSize / 2}px solid transparent`,
-                        transform: 'translateY(-50%)',
-                        pointerEvents: 'none'
-                    });
-
-                    arrowLine.appendChild(arrowHead);
-                    arrowContainer.appendChild(arrowLine);
-
-                    // Добавляем метку с длиной для временных стрелок
-                    if (isTemporary) {
-                        const arrowLabel = document.createElement('div');
-                        arrowLabel.className = 'arrow-label';
-                        arrowLabel.textContent = `${Math.round(length)}px`;
-                        Object.assign(arrowLabel.style, {
-                            position: 'absolute',
-                            left: `${endX + 10}px`,
-                            top: `${endY - 20}px`,
-                            fontSize: '12px',
-                            fontWeight: 'bold',
-                            color: 'rgba(76, 175, 80, 0.9)',
-                            background: 'rgba(255, 255, 255, 0.95)',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            border: '1px solid rgba(76, 175, 80, 0.9)',
-                            pointerEvents: 'none',
-                            userSelect: 'none',
-                            fontFamily: 'Arial, sans-serif',
-                            lineHeight: '1',
-                            whiteSpace: 'nowrap',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                            zIndex: '2147483649'
-                        });
-                        arrowContainer.appendChild(arrowLabel);
-                    }
-
-                    return arrowContainer;
-                }
-
-                // Функция для создания маркера редактирования стрелки
-                function createArrowEditMarker(x, y, type, arrowIdx) {
-                    const marker = document.createElement('div');
-                    marker.className = `arrow-edit-marker arrow-${type}-marker`;
-                    Object.assign(marker.style, {
-                        position: 'absolute',
-                        left: `${x - 6}px`,
-                        top: `${y - 6}px`,
-                        width: '12px',
-                        height: '12px',
-                        background: type === 'start' ? 'rgba(76, 175, 80, 0.9)' : 'rgba(255, 152, 0, 0.9)',
-                        border: '2px solid #fff',
-                        borderRadius: '50%',
-                        cursor: 'move',
-                        zIndex: '2147483650',
-                        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
-                        opacity: '0',
-                        visibility: 'hidden',
-                        transition: 'opacity 0.2s, visibility 0.2s, transform 0.1s',
-                        pointerEvents: 'auto'
-                    });
-
-                    // Добавляем hover эффект
-                    marker.addEventListener('mouseenter', () => {
-                        marker.style.transform = 'scale(1.2)';
-                    });
-
-                    marker.addEventListener('mouseleave', () => {
-                        if (editingArrowIdx !== arrowIdx || editingArrowPoint !== type) {
-                            marker.style.transform = 'scale(1)';
-                        }
-                    });
-
-                    // Обработчик начала редактирования
-                    marker.addEventListener('mousedown', (e) => {
-                        e.stopPropagation();
-                        editingArrowIdx = arrowIdx;
-                        editingArrowPoint = type;
-                        arrowEditStart = { x: e.clientX, y: e.clientY };
-                        marker.style.transform = 'scale(1.3)';
-                        document.body.style.cursor = 'move';
-                        console.log(`[Arrow Edit] Начинаем редактирование ${type} точки стрелки ${arrowIdx}`);
-                    });
-
-                    return marker;
-                }
-
-                // Функция для обновления позиции маркеров
-                function updateArrowMarkers(arrowContainer, arrow, arrowIdx) {
-                    const startMarker = arrowContainer.querySelector('.arrow-start-marker');
-                    const endMarker = arrowContainer.querySelector('.arrow-end-marker');
-
-                    if (startMarker) {
-                        startMarker.style.left = `${arrow.startX - 6}px`;
-                        startMarker.style.top = `${arrow.startY - 6}px`;
-                    }
-
-                    if (endMarker) {
-                        endMarker.style.left = `${arrow.endX - 6}px`;
-                        endMarker.style.top = `${arrow.endY - 6}px`;
-                    }
-                }
-
-                // Функция для обновления стрелки
-                function updateArrowElement(arrowContainer, startX, startY, endX, endY) {
-                    const dx = endX - startX;
-                    const dy = endY - startY;
-                    const length = Math.sqrt(dx * dx + dy * dy);
-                    const angle = Math.atan2(dy, dx);
-
-                    // Находим линию стрелки внутри контейнера
-                    const arrowLine = arrowContainer.querySelector('.arrow-line');
-                    if (arrowLine) {
-                        Object.assign(arrowLine.style, {
-                            left: `${startX}px`,
-                            top: `${startY}px`,
-                            width: `${length}px`,
-                            transform: `rotate(${angle}rad)`
-                        });
-                    }
-
-                    // Обновляем головку стрелки
-                    const arrowHead = arrowContainer.querySelector('.arrow-head');
-                    if (arrowHead) {
-                        const headSize = Math.max(8, Math.min(20, length / 4));
-                        arrowHead.style.borderLeft = `${headSize}px solid rgba(76, 175, 80, 0.9)`;
-                        arrowHead.style.borderTop = `${headSize / 2}px solid transparent`;
-                        arrowHead.style.borderBottom = `${headSize / 2}px solid transparent`;
-                    }
-
-                    // Обновляем метку длины, если она есть
-                    const arrowLabel = arrowContainer.querySelector('.arrow-label');
-                    if (arrowLabel) {
-                        arrowLabel.textContent = `${Math.round(length)}px`;
-                        arrowLabel.style.left = `${endX + 10}px`;
-                        arrowLabel.style.top = `${endY - 20}px`;
-                    }
-                }
-
                 // Улучшенная логика обработки кликов в области линеек и гайдов
                 drawingLayer.addEventListener('mousedown', (e) => {
                 if (rulersOverlay.style.display === 'none') return;
@@ -3526,7 +2930,7 @@
                     }
 
                     // Если клик в области панели управления, передаем событие панели
-                    if (isInPanelArea(clickX, clickY) || isInStatusBarArea(clickX, clickY)) {
+                    if (isInPanelArea(clickX, clickY)) {
                         console.log('[Drawing] Клик в области UI - проксирование события');
                         // Временно отключаем pointer-events у drawingLayer
                         drawingLayer.style.pointerEvents = 'none';
@@ -3591,13 +2995,8 @@
                         return;
                     }
 
-                    // Отладочная информация для понимания состояния
-                                    console.log(`[Drawing Debug v1.42] 🎯 MOUSEDOWN - Режим: ${currentDrawingMode}, позиция: ${clickX},${clickY}`);
-                console.log(`[Drawing Debug v1.42] 🎯 Активное рисование - стрелка: ${!!drawingArrow}, прямоугольник: ${!!drawingRect}`);
-
-                    if (currentDrawingMode === 'rectangle') {
-                        // Рисование прямоугольника
-                        console.log('[Drawing] Начинаем рисование прямоугольника');
+                    // Рисование прямоугольника
+                    console.log('[Drawing] Начинаем рисование прямоугольника');
                         drawingStart = { x: clickX, y: clickY };
                         drawingRectData = { left: drawingStart.x, top: drawingStart.y, width: 1, height: 1, color: RECTANGLE_COLOR };
                         drawingRect = document.createElement('div');
@@ -3656,28 +3055,14 @@
                         updateDrawingSizeLabel();
                         drawingRect.appendChild(drawingSizeLabel);
                         guidesContainer.appendChild(drawingRect);
-                        console.log('[Drawing] Прямоугольник успешно создан и добавлен в DOM');
-                    } else if (currentDrawingMode === 'arrow') {
-                        // Рисование стрелки
-                        console.log('[Drawing Debug v1.42] 🏹 НАЧИНАЕМ рисование стрелки');
-                        drawingStart = { x: clickX, y: clickY };
-                        drawingArrowData = { startX: clickX, startY: clickY, endX: clickX + 1, endY: clickY + 1 };
-                        drawingArrow = createArrowElement(clickX, clickY, clickX + 1, clickY + 1, true); // isTemporary = true
-
-                        if (drawingArrow) {
-                            guidesContainer.appendChild(drawingArrow);
-                            console.log('[Drawing Debug v1.42] ✅ Стрелка успешно создана и добавлена в DOM');
-                        } else {
-                            console.error('[Drawing Debug v1.42] ❌ ОШИБКА: не удалось создать стрелку');
-                        }
-                    }
+                    console.log('[Drawing] Прямоугольник успешно создан и добавлен в DOM');
                     e.preventDefault();
                     e.stopPropagation(); // Останавливаем всплытие события
             });
 
             window.addEventListener('mousemove', (e) => {
                 // Обновление прямоугольника при рисовании
-                if (drawingRect && drawingStart && drawingRectData && currentDrawingMode === 'rectangle') {
+                if (drawingRect && drawingStart && drawingRectData) {
                     const x1 = drawingStart.x;
                     const y1 = drawingStart.y;
                     const x2 = e.clientX;
@@ -3711,25 +3096,6 @@
                         sizeLabel.style.padding = `${padding}px ${padding * 2}px`;
                     }
                 }
-
-                // Обновление стрелки при рисовании
-                if (drawingArrow && drawingStart && drawingArrowData && currentDrawingMode === 'arrow') {
-                    const startX = drawingStart.x;
-                    const startY = drawingStart.y;
-                    const endX = e.clientX;
-                    const endY = e.clientY;
-
-                    drawingArrowData.endX = endX;
-                    drawingArrowData.endY = endY;
-
-                    updateArrowElement(drawingArrow, startX, startY, endX, endY);
-
-                    // Отладка только каждые 100мс чтобы не спамить консоль
-                    if (!window.lastArrowMoveLog || Date.now() - window.lastArrowMoveLog > 100) {
-                        console.log(`[Drawing Debug v1.42] 🏹 Обновление стрелки: ${startX},${startY} → ${endX},${endY}`);
-                        window.lastArrowMoveLog = Date.now();
-                    }
-                }
             });
 
                 // Улучшенное проксирование событий click для UI элементов
@@ -3742,7 +3108,7 @@
                     console.log('[Drawing Debug v1.42] 👆 CLICK в drawingLayer:', clickX, clickY);
 
                     // Если клик в области панели управления, проксируем событие
-                    if (isInPanelArea(clickX, clickY) || isInStatusBarArea(clickX, clickY)) {
+                    if (isInPanelArea(clickX, clickY)) {
                         console.log('[Drawing Debug v1.42] 🔄 Проксирование клика в UI область');
                         // Временно отключаем pointer-events у drawingLayer
                         drawingLayer.style.pointerEvents = 'none';
@@ -3785,8 +3151,8 @@
                     const clickX = e.clientX;
                     const clickY = e.clientY;
 
-                    // Если mouseup в области панели управления или статус-бара, проксируем событие
-                    if (isInPanelArea(clickX, clickY) || isInStatusBarArea(clickX, clickY)) {
+                    // Если mouseup в области панели управления, проксируем событие
+                    if (isInPanelArea(clickX, clickY)) {
                         // Временно отключаем pointer-events у drawingLayer
                         drawingLayer.style.pointerEvents = 'none';
                         // Получаем элемент под курсором
@@ -3882,7 +3248,7 @@
                     const mouseY = e.clientY;
 
                     // Проверяем, находится ли курсор в области UI
-                    const inUIArea = isInPanelArea(mouseX, mouseY) || isInStatusBarArea(mouseX, mouseY);
+                    const inUIArea = isInPanelArea(mouseX, mouseY);
 
                     if (inUIArea) {
                         // Временно отключаем pointer-events у drawingLayer
@@ -3980,13 +3346,8 @@
                             newCursor = nearVertical ? 'ew-resize' : 'ns-resize';
                         } else if (isNearRectangleEdge(mouseX, mouseY)) {
                             newCursor = 'move';
-                        } else if (!isDraggingNewGuide && !draggingGuide && !drawingRect && !drawingArrow && resizingRectIdx === null) {
-                            // Можно рисовать прямоугольник или стрелку
-                            if (currentDrawingMode === 'arrow') {
-                                newCursor = 'copy'; // Курсор для стрелки
-                            } else {
-                                newCursor = 'crosshair'; // Курсор для прямоугольника
-                            }
+                        } else if (!isDraggingNewGuide && !draggingGuide && !drawingRect && resizingRectIdx === null) {
+                            newCursor = 'crosshair'; // Курсор для прямоугольника
                         }
 
                         setStableCursor(newCursor);
@@ -4243,132 +3604,6 @@
                 });
                 guidesContainer.appendChild(g);
             });
-            // Стрелки
-            drawnArrows.forEach((arrow, idx) => {
-                const arrowContainer = createArrowElement(arrow.startX, arrow.startY, arrow.endX, arrow.endY, false);
-
-                // Создаем маркеры для редактирования начальной и конечной точек
-                const startMarker = createArrowEditMarker(arrow.startX, arrow.startY, 'start', idx);
-                const endMarker = createArrowEditMarker(arrow.endX, arrow.endY, 'end', idx);
-
-                arrowContainer.appendChild(startMarker);
-                arrowContainer.appendChild(endMarker);
-
-                // Показываем/скрываем маркеры при наведении на стрелку
-                let hoverTimeout = null;
-
-                arrowContainer.addEventListener('mouseenter', () => {
-                    // Очищаем таймаут если он есть
-                    if (hoverTimeout) {
-                        clearTimeout(hoverTimeout);
-                        hoverTimeout = null;
-                    }
-
-                    // Показываем маркеры
-                    startMarker.style.visibility = 'visible';
-                    startMarker.style.opacity = '1';
-                    endMarker.style.visibility = 'visible';
-                    endMarker.style.opacity = '1';
-                });
-
-                arrowContainer.addEventListener('mouseleave', (e) => {
-                    // Не скрываем маркеры если идет редактирование
-                    if (editingArrowIdx === idx) return;
-
-                    // Задержка перед скрытием для удобства использования
-                    hoverTimeout = setTimeout(() => {
-                        if (editingArrowIdx !== idx) {
-                            startMarker.style.visibility = 'hidden';
-                            startMarker.style.opacity = '0';
-                            endMarker.style.visibility = 'hidden';
-                            endMarker.style.opacity = '0';
-                        }
-                        hoverTimeout = null;
-                    }, 500);
-                });
-
-                // Добавляем возможность копирования стрелки
-                arrowContainer.addEventListener('mousedown', (e) => {
-                    // Проверяем, что клик не по маркерам
-                    if (e.target.classList.contains('arrow-edit-marker')) {
-                        return; // Маркеры обрабатывают свои события сами
-                    }
-
-                    if (e.shiftKey) {
-                        // Копирование стрелки с Shift
-                        e.stopPropagation();
-                        const newArrow = { ...arrow };
-                        newArrow.startX += 20;
-                        newArrow.startY += 20;
-                        newArrow.endX += 20;
-                        newArrow.endY += 20;
-                        drawnArrows.push(newArrow);
-                        renderGuides();
-                        saveGuides();
-                        return;
-                    }
-
-                    // Обычное перемещение (пока не реализовано)
-                });
-
-                // Удаление стрелки по двойному клику
-                arrowContainer.addEventListener('dblclick', (e) => {
-                    // Проверяем, что клик не по маркерам
-                    if (e.target.classList.contains('arrow-edit-marker')) {
-                        return;
-                    }
-
-                    e.stopPropagation();
-                    drawnArrows.splice(idx, 1);
-                    renderGuides();
-                    saveGuides();
-                });
-
-                // Добавляем метку с длиной стрелки (показывается при наведении)
-                const dx = arrow.endX - arrow.startX;
-                const dy = arrow.endY - arrow.startY;
-                const length = Math.sqrt(dx * dx + dy * dy);
-
-                const arrowLabel = document.createElement('div');
-                arrowLabel.className = 'arrow-hover-label';
-                arrowLabel.textContent = `${Math.round(length)}px`;
-                Object.assign(arrowLabel.style, {
-                    position: 'absolute',
-                    left: `${arrow.endX + 10}px`,
-                    top: `${arrow.endY - 20}px`,
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    color: 'rgba(76, 175, 80, 0.9)',
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    padding: '2px 6px',
-                    borderRadius: '3px',
-                    border: '1px solid rgba(76, 175, 80, 0.9)',
-                    pointerEvents: 'none',
-                    userSelect: 'none',
-                    fontFamily: 'Arial, sans-serif',
-                    lineHeight: '1',
-                    whiteSpace: 'nowrap',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                    zIndex: '2147483649',
-                    opacity: '0',
-                    visibility: 'hidden',
-                    transition: 'opacity 0.2s, visibility 0.2s'
-                });
-
-                // Показываем метку при наведении на стрелку
-                arrowContainer.addEventListener('mouseenter', () => {
-                    arrowLabel.style.visibility = 'visible';
-                    arrowLabel.style.opacity = '1';
-                });
-
-                arrowContainer.addEventListener('mouseleave', () => {
-                    arrowLabel.style.visibility = 'hidden';
-                    arrowLabel.style.opacity = '0';
-                });
-
-                arrowContainer.appendChild(arrowLabel);
-                guidesContainer.appendChild(arrowContainer);
-            });
 
             // Прямоугольники
             drawnRects.forEach((rect, idx) => {
@@ -4473,8 +3708,8 @@
         // Функция обработчика кликов в guidesContainer
         function createGuidesClickHandler() {
             return (e) => {
-                // НЕ вмешиваемся в процесс рисования стрелок и прямоугольников
-                if (drawingArrow || drawingRect) {
+                // НЕ вмешиваемся в процесс рисования прямоугольников
+                if (drawingRect) {
                     console.log('[Drawing Debug v1.42] 🚫 Клик в guidesContainer заблокирован - идет рисование');
                     return;
                 }
@@ -4482,12 +3717,6 @@
                 // НЕ вмешиваемся если недавно завершили рисование (в течение 300мс)
                 if (recentlyFinishedDrawing) {
                     console.log('[Drawing Debug v1.42] 🚫 Клик в guidesContainer заблокирован - недавно завершили рисование');
-                    return;
-                }
-
-                // НЕ вмешиваемся если мы в режиме рисования стрелок
-                if (currentDrawingMode === 'arrow') {
-                    console.log('[Drawing Debug v1.42] 🚫 Клик в guidesContainer заблокирован - режим рисования стрелок');
                     return;
                 }
 
@@ -4501,30 +3730,6 @@
         guidesClickHandler = createGuidesClickHandler();
         guidesContainer.addEventListener('click', guidesClickHandler);
         window.addEventListener('mousemove', (e) => {
-            // === РЕДАКТИРОВАНИЕ СТРЕЛОК ===
-            if (editingArrowIdx !== null && editingArrowPoint !== null && arrowEditStart) {
-                const dx = e.clientX - arrowEditStart.x;
-                const dy = e.clientY - arrowEditStart.y;
-
-                const arrow = drawnArrows[editingArrowIdx];
-                if (arrow) {
-                    if (editingArrowPoint === 'start') {
-                        arrow.startX += dx;
-                        arrow.startY += dy;
-                    } else if (editingArrowPoint === 'end') {
-                        arrow.endX += dx;
-                        arrow.endY += dy;
-                    }
-
-                    // Обновляем позицию для следующего кадра
-                    arrowEditStart.x = e.clientX;
-                    arrowEditStart.y = e.clientY;
-
-                    renderGuides();
-                }
-                return;
-            }
-
             // === RESIZE RECT ===
             if (resizingRectIdx !== null && resizingHandle !== null && resizeStart) {
                 const rect = drawnRects[resizingRectIdx];
@@ -4583,17 +3788,6 @@
             // ... остальные действия (например, рисование прямоугольника) ...
         });
         window.addEventListener('mouseup', (e) => {
-            // === ЗАВЕРШЕНИЕ РЕДАКТИРОВАНИЯ СТРЕЛОК ===
-            if (editingArrowIdx !== null && editingArrowPoint !== null) {
-                editingArrowIdx = null;
-                editingArrowPoint = null;
-                arrowEditStart = null;
-                document.body.style.cursor = '';
-                saveGuides();
-                console.log('[Arrow Edit] Редактирование стрелки завершено');
-                return;
-            }
-
             // === RESIZE RECT ===
             if (resizingRectIdx !== null) {
                 resizingRectIdx = null;
@@ -4722,16 +3916,6 @@
 
         // Функция для отмены текущего рисования
         function cancelCurrentDrawing() {
-            if (drawingArrow) {
-                if (drawingArrow.parentNode) {
-                    drawingArrow.parentNode.removeChild(drawingArrow);
-                }
-                drawingArrow = null;
-                drawingStart = null;
-                drawingArrowData = null;
-                console.log('[Cancel] Рисование стрелки отменено');
-            }
-
             if (drawingRect) {
                 if (drawingRect.parentNode) {
                     drawingRect.parentNode.removeChild(drawingRect);
@@ -4745,7 +3929,7 @@
 
         // Обработчик клавиши Escape для отмены рисования
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && (drawingArrow || drawingRect)) {
+            if (e.key === 'Escape' && drawingRect) {
                 console.log('[Escape] Отмена текущего рисования');
                 cancelCurrentDrawing();
                 e.preventDefault();
@@ -4757,7 +3941,7 @@
             if (rulersOverlay.style.display === 'none') return;
 
             // Проверяем, является ли цель интерактивным элементом в области UI
-            const inUIArea = isInPanelArea(e.clientX, e.clientY) || isInStatusBarArea(e.clientX, e.clientY);
+            const inUIArea = isInPanelArea(e.clientX, e.clientY);
             if (inUIArea && isInteractiveUIElement(e.target)) {
                 temporaryDisableDrawingLayer(500); // Длительное отключение для drag операций
             }
@@ -4791,7 +3975,6 @@
                 rulersOverlay.style.display = 'block';
                 guidesContainer.style.display = 'block';
                 drawingLayer.style.display = 'block'; // Показываем слой для рисования
-                statusBar.style.display = 'flex'; // Показываем статус-бар
                 drawRulers();
                 renderGuides();
 
@@ -4802,13 +3985,17 @@
                 // Обновляем цвет кнопки
                 updateRulersBtnColor();
             } else {
-                // Завершаем текущее рисование перед скрытием линеек
-                finishCurrentDrawing();
+                // Очищаем текущее рисование прямоугольника перед скрытием линеек
+                if (drawingRect && drawingRect.parentNode) {
+                    drawingRect.parentNode.removeChild(drawingRect);
+                }
+                drawingRect = null;
+                drawingStart = null;
+                drawingRectData = null;
 
                 rulersOverlay.style.display = 'none';
                 guidesContainer.style.display = 'none';
                 drawingLayer.style.display = 'none'; // Скрываем слой для рисования
-                statusBar.style.display = 'none'; // Скрываем статус-бар
 
                 // Очищаем таймер при отключении режима
                 if (interactionTimer) {
@@ -4969,7 +4156,6 @@
                 // Определяем, можно ли рисовать прямоугольник в данной позиции
                 const canDrawRect = !isInRulerArea(mouseX, mouseY) &&
                                   !isInPanelArea(mouseX, mouseY) &&
-                                  !isInStatusBarArea(mouseX, mouseY) &&
                                   !isNearGuide(mouseX, mouseY) &&
                                   !isNearRectangleEdge(mouseX, mouseY) &&
                                   !isDraggingNewGuide &&
@@ -4984,8 +4170,6 @@
                     drawingLayer.style.cursor = mouseX <= 24 ? 'ew-resize' : 'ns-resize';
                 } else if (isInPanelArea(mouseX, mouseY)) {
                     drawingLayer.style.cursor = 'default'; // Обычный курсор над панелью
-                } else if (isInStatusBarArea(mouseX, mouseY)) {
-                    drawingLayer.style.cursor = 'default'; // Обычный курсор над статус-баром
                 } else if (isNearGuide(mouseX, mouseY)) {
                     // Определяем тип ближайшего гайда для курсора
                     let nearVertical = false;
